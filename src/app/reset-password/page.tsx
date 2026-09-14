@@ -9,7 +9,7 @@ export default function ResetPasswordPage() {
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
       <h1 className="text-2xl font-bold text-slate-900">Reset your password</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Enter your email and we'll send you a link to set a new password.
+        Enter your email and we&apos;ll send you a link to set a new password.
       </p>
 
       <div className="mt-8">

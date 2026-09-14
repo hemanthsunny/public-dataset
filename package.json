@@ -19,7 +19,7 @@
     "agent1:run": "tsx netlify/functions/agent1-new-incorporations.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.45.4",
     "next": "^14.2.15",
     "react": "^18.3.1",

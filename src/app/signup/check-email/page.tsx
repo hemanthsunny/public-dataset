@@ -6,7 +6,7 @@ export default function CheckEmailPage() {
       <h1 className="text-2xl font-bold text-slate-900">Check your inbox</h1>
       <div className="mt-6">
         <Alert tone="info">
-          We've sent a confirmation link to your email address. Click it to activate your
+          We&apos;ve sent a confirmation link to your email address. Click it to activate your
           account, then log in.
         </Alert>
       </div>

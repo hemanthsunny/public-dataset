@@ -33,7 +33,7 @@ export default function AgentDetailPage({ params }: { params: { slug: string } }
           <dd className="mt-1 text-sm text-slate-900">{agent.dataSource}</dd>
         </div>
         <div>
-          <dt className="text-sm font-semibold text-slate-500">Who it's for</dt>
+          <dt className="text-sm font-semibold text-slate-500">Who it&apos;s for</dt>
           <dd className="mt-1 text-sm text-slate-900">{agent.targetCustomer}</dd>
         </div>
         <div>

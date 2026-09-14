@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
 
@@ -22,7 +23,7 @@ export async function createClient() {
       getAll() {
         return cookieStore.getAll()
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
@@ -53,10 +54,6 @@ export function createServiceRoleClient() {
     )
   }
 
-  // Lazily imported to keep the plain @supabase/supabase-js client (no
-  // cookie/session handling needed) out of the SSR bundle graph.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
   return createSupabaseClient<Database>(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })

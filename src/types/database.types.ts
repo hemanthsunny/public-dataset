@@ -16,6 +16,14 @@ export type SubscriptionStatus = 'active' | 'paused' | 'cancelled'
 export type ChannelType = 'slack' | 'whatsapp' | 'teams' | 'email'
 export type AlertStatus = 'sent' | 'failed' | 'skipped'
 
+type Relationships = Array<{
+  foreignKeyName: string
+  columns: string[]
+  isOneToOne?: boolean
+  referencedRelation: string
+  referencedColumns: string[]
+}>
+
 export interface Database {
   public: {
     Tables: {
@@ -29,6 +37,7 @@ export interface Database {
         }
         Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { id: string }
         Update: Partial<Database['public']['Tables']['profiles']['Row']>
+        Relationships: Relationships
       }
       agents: {
         Row: {
@@ -45,6 +54,7 @@ export interface Database {
         }
         Insert: Partial<Database['public']['Tables']['agents']['Row']> & { id: AgentId }
         Update: Partial<Database['public']['Tables']['agents']['Row']>
+        Relationships: Relationships
       }
       subscriptions: {
         Row: {
@@ -61,6 +71,7 @@ export interface Database {
           agent_id: AgentId
         }
         Update: Partial<Database['public']['Tables']['subscriptions']['Row']>
+        Relationships: Relationships
       }
       delivery_channels: {
         Row: {
@@ -79,11 +90,13 @@ export interface Database {
           destination: string
         }
         Update: Partial<Database['public']['Tables']['delivery_channels']['Row']>
+        Relationships: Relationships
       }
       subscription_channels: {
         Row: { subscription_id: string; delivery_channel_id: string }
         Insert: { subscription_id: string; delivery_channel_id: string }
         Update: Partial<{ subscription_id: string; delivery_channel_id: string }>
+        Relationships: Relationships
       }
       alerts_log: {
         Row: {
@@ -103,6 +116,7 @@ export interface Database {
           status: AlertStatus
         }
         Update: Partial<Database['public']['Tables']['alerts_log']['Row']>
+        Relationships: Relationships
       }
       companies_cache: {
         Row: {
@@ -121,7 +135,17 @@ export interface Database {
           raw: Record<string, unknown>
         }
         Update: Partial<Database['public']['Tables']['companies_cache']['Row']>
+        Relationships: Relationships
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: {
+      agent_id: AgentId
+      subscription_status: SubscriptionStatus
+      channel_type: ChannelType
+      alert_status: AlertStatus
+    }
+    CompositeTypes: Record<string, never>
   }
 }

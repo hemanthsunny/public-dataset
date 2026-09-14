@@ -6,11 +6,11 @@ import { Field } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
 
-interface AuthFormProps {
+interface AuthFormProps<T extends z.ZodTypeAny> {
   fields: Array<{ name: string; label: string; type: string; autoComplete?: string; hint?: string }>
-  schema: z.ZodTypeAny
+  schema: T
   submitLabel: string
-  onSubmit: (values: Record<string, string>) => Promise<{ error?: string; message?: string }>
+  onSubmit: (values: z.infer<T>) => Promise<{ error?: string; message?: string }>
 }
 
 /**
@@ -19,7 +19,12 @@ interface AuthFormProps {
  * top-level result (success message or error) without leaking whether an
  * email address exists in the system.
  */
-export function AuthForm({ fields, schema, submitLabel, onSubmit }: AuthFormProps) {
+export function AuthForm<T extends z.ZodTypeAny>({
+  fields,
+  schema,
+  submitLabel,
+  onSubmit,
+}: AuthFormProps<T>) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [formMessage, setFormMessage] = useState<string | null>(null)
@@ -45,7 +50,7 @@ export function AuthForm({ fields, schema, submitLabel, onSubmit }: AuthFormProp
 
     setFieldErrors({})
     setIsLoading(true)
-    const result = await onSubmit(values)
+    const result = await onSubmit(parsed.data)
     setIsLoading(false)
 
     if (result.error) setFormError(result.error)

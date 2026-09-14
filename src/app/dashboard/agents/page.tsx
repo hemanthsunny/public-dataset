@@ -29,7 +29,7 @@ export default async function DashboardAgentsPage() {
 
       {(!channels || channels.length === 0) && (
         <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          You haven't added a delivery channel yet — alerts have nowhere to go until you{' '}
+          You haven&apos;t added a delivery channel yet — alerts have nowhere to go until you{' '}
           <a href="/dashboard/channels" className="font-medium underline">
             add one
           </a>
