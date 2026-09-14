@@ -1,12 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { ChannelsManager } from './ChannelsManager'
+import { DEMO_CHANNELS, isDemoMode } from '@/lib/demo'
 
 export default async function DashboardChannelsPage() {
-  const supabase = await createClient()
-  const { data: channels } = await supabase
-    .from('delivery_channels')
-    .select('id, channel_type, label, destination, is_active, is_verified')
-    .order('created_at', { ascending: true })
+  let channels = DEMO_CHANNELS.map((c) => ({ ...c }))
+
+  if (!isDemoMode()) {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('delivery_channels')
+      .select('id, channel_type, label, destination, is_active, is_verified')
+      .order('created_at', { ascending: true })
+    channels = (data as typeof channels) ?? []
+  }
 
   return (
     <div>
@@ -16,7 +22,7 @@ export default async function DashboardChannelsPage() {
         for your active subscriptions go to every active channel below.
       </p>
       <div className="mt-6">
-        <ChannelsManager initialChannels={channels ?? []} />
+        <ChannelsManager initialChannels={channels} demoMode={isDemoMode()} />
       </div>
     </div>
   )

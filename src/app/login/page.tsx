@@ -3,14 +3,16 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { DEMO_CREDENTIALS, isDemoMode } from '@/lib/demo'
 import { loginSchema } from '@/lib/validation'
 import { AuthForm } from '@/components/AuthForm'
+import { Alert } from '@/components/ui/Alert'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next') || '/dashboard'
+  const demo = isDemoMode()
 
   return (
     <AuthForm
@@ -21,11 +23,25 @@ function LoginForm() {
         { name: 'password', label: 'Password', type: 'password', autoComplete: 'current-password' },
       ]}
       onSubmit={async ({ email, password }) => {
+        if (demo) {
+          const res = await fetch('/api/demo/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          })
+          if (!res.ok) {
+            return { error: 'Incorrect email or password.' }
+          }
+          router.push(next)
+          router.refresh()
+          return {}
+        }
+
+        const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
         const { error } = await supabase.auth.signInWithPassword({ email, password })
 
         if (error) {
-          // Deliberately generic — don't reveal whether the email exists.
           return { error: 'Incorrect email or password.' }
         }
 
@@ -38,6 +54,8 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+  const demo = isDemoMode()
+
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
       <h1 className="text-2xl font-bold text-slate-900">Log in</h1>
@@ -48,17 +66,32 @@ export default function LoginPage() {
         </Link>
       </p>
 
+      {demo && (
+        <div className="mt-6">
+          <Alert tone="info">
+            <p className="font-medium">Demo mode — use these credentials:</p>
+            <p className="mt-1 font-mono text-sm">
+              {DEMO_CREDENTIALS.email}
+              <br />
+              {DEMO_CREDENTIALS.password}
+            </p>
+          </Alert>
+        </div>
+      )}
+
       <div className="mt-8">
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
       </div>
 
-      <p className="mt-4 text-sm text-slate-600">
-        <Link href="/reset-password" className="font-medium text-brand-600 hover:text-brand-700">
-          Forgot your password?
-        </Link>
-      </p>
+      {!demo && (
+        <p className="mt-4 text-sm text-slate-600">
+          <Link href="/reset-password" className="font-medium text-brand-600 hover:text-brand-700">
+            Forgot your password?
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { DEMO_CREDENTIALS, isDemoMode } from '@/lib/demo'
 import { signUpSchema } from '@/lib/validation'
 import { AuthForm } from '@/components/AuthForm'
+import { Alert } from '@/components/ui/Alert'
 
 export default function SignUpPage() {
   const router = useRouter()
+  const demo = isDemoMode()
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
@@ -19,41 +21,57 @@ export default function SignUpPage() {
         </Link>
       </p>
 
-      <div className="mt-8">
-        <AuthForm
-          schema={signUpSchema}
-          submitLabel="Create account"
-          fields={[
-            { name: 'fullName', label: 'Full name', type: 'text', autoComplete: 'name' },
-            { name: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
-            {
-              name: 'password',
-              label: 'Password',
-              type: 'password',
-              autoComplete: 'new-password',
-              hint: 'At least 10 characters, with an uppercase letter, a lowercase letter, and a number.',
-            },
-          ]}
-          onSubmit={async ({ fullName, email, password }) => {
-            const supabase = createClient()
-            const { error } = await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                data: { full_name: fullName },
-                emailRedirectTo: `${window.location.origin}/auth/callback`,
+      {demo ? (
+        <div className="mt-8">
+          <Alert tone="info">
+            Sign-up is disabled in demo mode. Use the demo account on the{' '}
+            <Link href="/login" className="font-medium underline">
+              login page
+            </Link>
+            :
+            <span className="mt-2 block font-mono text-sm">
+              {DEMO_CREDENTIALS.email} / {DEMO_CREDENTIALS.password}
+            </span>
+          </Alert>
+        </div>
+      ) : (
+        <div className="mt-8">
+          <AuthForm
+            schema={signUpSchema}
+            submitLabel="Create account"
+            fields={[
+              { name: 'fullName', label: 'Full name', type: 'text', autoComplete: 'name' },
+              { name: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
+              {
+                name: 'password',
+                label: 'Password',
+                type: 'password',
+                autoComplete: 'new-password',
+                hint: 'At least 10 characters, with an uppercase letter, a lowercase letter, and a number.',
               },
-            })
+            ]}
+            onSubmit={async ({ fullName, email, password }) => {
+              const { createClient } = await import('@/lib/supabase/client')
+              const supabase = createClient()
+              const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                  data: { full_name: fullName },
+                  emailRedirectTo: `${window.location.origin}/auth/callback`,
+                },
+              })
 
-            if (error) {
-              return { error: error.message }
-            }
+              if (error) {
+                return { error: error.message }
+              }
 
-            router.push('/signup/check-email')
-            return {}
-          }}
-        />
-      </div>
+              router.push('/signup/check-email')
+              return {}
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

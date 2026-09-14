@@ -27,10 +27,12 @@ export function AgentSubscriptionCard({
   agent,
   subscription,
   channels,
+  demoMode = false,
 }: {
   agent: AgentMeta
   subscription: Subscription | null
   channels: Channel[]
+  demoMode?: boolean
 }) {
   const [isSubscribed, setIsSubscribed] = useState(subscription?.status === 'active')
   const [postcodePrefix, setPostcodePrefix] = useState(
@@ -43,6 +45,13 @@ export function AgentSubscriptionCard({
   async function toggleSubscription() {
     setError(null)
     setIsSaving(true)
+
+    if (demoMode) {
+      setIsSubscribed(!isSubscribed)
+      setIsSaving(false)
+      return
+    }
+
     const supabase = createClient()
     const {
       data: { user },
@@ -82,6 +91,14 @@ export function AgentSubscriptionCard({
     }
 
     setIsSaving(true)
+
+    if (demoMode) {
+      setSaved(true)
+      setIsSaving(false)
+      setTimeout(() => setSaved(false), 2000)
+      return
+    }
+
     const supabase = createClient()
     const {
       data: { user },

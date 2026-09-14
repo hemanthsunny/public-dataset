@@ -1,24 +1,43 @@
 import { createClient } from '@/lib/supabase/server'
 import { AGENTS } from '@/lib/constants/agents'
 import { AgentSubscriptionCard } from './AgentSubscriptionCard'
+import { DEMO_CHANNELS, DEMO_SUBSCRIPTIONS, isDemoMode } from '@/lib/demo'
+import { getSessionUser } from '@/lib/session'
 
 export default async function DashboardAgentsPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let subscriptions = DEMO_SUBSCRIPTIONS.map(({ id, agent_id, status, filters }) => ({
+    id,
+    agent_id,
+    status,
+    filters,
+  }))
+  let channels = DEMO_CHANNELS.map(({ id, channel_type, label, destination, is_active }) => ({
+    id,
+    channel_type,
+    label,
+    destination,
+    is_active,
+  }))
 
-  const { data: subscriptions } = await supabase
-    .from('subscriptions')
-    .select('id, agent_id, status, filters')
-    .eq('user_id', user?.id ?? '')
+  if (!isDemoMode()) {
+    const supabase = await createClient()
+    const user = await getSessionUser()
 
-  const { data: channels } = await supabase
-    .from('delivery_channels')
-    .select('id, channel_type, label, destination, is_active')
-    .eq('is_active', true)
+    const { data: subs } = await supabase
+      .from('subscriptions')
+      .select('id, agent_id, status, filters')
+      .eq('user_id', user?.id ?? '')
 
-  const subsByAgent = new Map((subscriptions ?? []).map((s) => [s.agent_id, s]))
+    const { data: chans } = await supabase
+      .from('delivery_channels')
+      .select('id, channel_type, label, destination, is_active')
+      .eq('is_active', true)
+
+    subscriptions = (subs as typeof subscriptions) ?? []
+    channels = (chans as typeof channels) ?? []
+  }
+
+  const subsByAgent = new Map(subscriptions.map((s) => [s.agent_id, s]))
 
   return (
     <div>
@@ -44,6 +63,7 @@ export default async function DashboardAgentsPage() {
             agent={agent}
             subscription={subsByAgent.get(agent.id) ?? null}
             channels={channels ?? []}
+            demoMode={isDemoMode()}
           />
         ))}
       </div>

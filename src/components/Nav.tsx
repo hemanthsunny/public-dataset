@@ -1,12 +1,9 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/session'
 import { SignOutButton } from '@/components/SignOutButton'
 
 export async function Nav() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSessionUser()
 
   return (
     <header className="border-b border-slate-200 bg-white">

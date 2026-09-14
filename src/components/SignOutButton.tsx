@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { isDemoMode } from '@/lib/demo'
 
 export function SignOutButton() {
   const router = useRouter()
@@ -10,10 +10,18 @@ export function SignOutButton() {
 
   async function handleSignOut() {
     setIsLoading(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    try {
+      if (isDemoMode()) {
+        await fetch('/api/demo/logout', { method: 'POST' })
+      } else {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        await supabase.auth.signOut()
+      }
+    } finally {
+      router.push('/')
+      router.refresh()
+    }
   }
 
   return (

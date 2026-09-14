@@ -24,7 +24,13 @@ const CHANNEL_TYPES = [
   { value: 'email', label: 'Email', placeholder: 'you@example.com' },
 ] as const
 
-export function ChannelsManager({ initialChannels }: { initialChannels: Channel[] }) {
+export function ChannelsManager({
+  initialChannels,
+  demoMode = false,
+}: {
+  initialChannels: Channel[]
+  demoMode?: boolean
+}) {
   const [channels, setChannels] = useState(initialChannels)
   const [channelType, setChannelType] = useState<(typeof CHANNEL_TYPES)[number]['value']>('slack')
   const [label, setLabel] = useState('')
@@ -43,6 +49,25 @@ export function ChannelsManager({ initialChannels }: { initialChannels: Channel[
     }
 
     setIsSaving(true)
+
+    if (demoMode) {
+      setChannels((prev) => [
+        ...prev,
+        {
+          id: `demo-channel-${Date.now()}`,
+          channel_type: parsed.data.channelType,
+          label: parsed.data.label ?? null,
+          destination: parsed.data.destination,
+          is_active: true,
+          is_verified: false,
+        },
+      ])
+      setLabel('')
+      setDestination('')
+      setIsSaving(false)
+      return
+    }
+
     const supabase = createClient()
     const {
       data: { user },
@@ -75,6 +100,11 @@ export function ChannelsManager({ initialChannels }: { initialChannels: Channel[
   }
 
   async function removeChannel(id: string) {
+    if (demoMode) {
+      setChannels((prev) => prev.filter((c) => c.id !== id))
+      return
+    }
+
     const supabase = createClient()
     const { error: deleteError } = await supabase.from('delivery_channels').delete().eq('id', id)
     if (!deleteError) {

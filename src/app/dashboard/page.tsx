@@ -2,30 +2,47 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/Card'
 import { getAgentById } from '@/lib/constants/agents'
+import { DEMO_ALERTS, DEMO_SUBSCRIPTIONS, DEMO_USER, isDemoMode } from '@/lib/demo'
+import { getSessionUser } from '@/lib/session'
 
 export default async function DashboardOverviewPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSessionUser()
 
-  const { data: subscriptions } = await supabase
-    .from('subscriptions')
-    .select('id, agent_id, status, created_at')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
+  let subscriptions = DEMO_SUBSCRIPTIONS
+  let recentAlerts = DEMO_ALERTS
+  let displayName: string | undefined = DEMO_USER.fullName
 
-  const { data: recentAlerts } = await supabase
-    .from('alerts_log')
-    .select('id, agent_id, status, created_at')
-    .order('created_at', { ascending: false })
-    .limit(5)
+  if (!isDemoMode()) {
+    const supabase = await createClient()
+    const { data: subs } = await supabase
+      .from('subscriptions')
+      .select('id, agent_id, status, created_at')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+
+    const { data: alerts } = await supabase
+      .from('alerts_log')
+      .select('id, agent_id, status, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    subscriptions = (subs as typeof DEMO_SUBSCRIPTIONS) ?? []
+    recentAlerts = (alerts as typeof DEMO_ALERTS) ?? []
+    displayName = user?.fullName ?? undefined
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">
-        Welcome{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ''}
+        Welcome{displayName ? `, ${displayName}` : ''}
       </h1>
+
+      {isDemoMode() && (
+        <p className="mt-2 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          You are browsing sample data in demo mode. Connect Supabase to persist real
+          subscriptions and alerts.
+        </p>
+      )}
 
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
         <Card>

@@ -10,16 +10,16 @@ const securityHeaders = [
     value: 'max-age=63072000; includeSubDomains; preload',
   },
   {
-    // Kept intentionally strict; loosen per-directive if a third-party
-    // script/style is added, rather than removing the header.
+    // Next.js App Router needs inline scripts for hydration / Flight.
+    // Prefer nonces in a later hardening pass; do not drop CSP entirely.
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co https://*.netlify.app",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

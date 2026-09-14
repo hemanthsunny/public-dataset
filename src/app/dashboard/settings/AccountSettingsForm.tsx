@@ -11,10 +11,12 @@ export function AccountSettingsForm({
   email,
   fullName: initialFullName,
   companyName: initialCompanyName,
+  demoMode = false,
 }: {
   email: string
   fullName: string
   companyName: string
+  demoMode?: boolean
 }) {
   const [fullName, setFullName] = useState(initialFullName)
   const [companyName, setCompanyName] = useState(initialCompanyName)
@@ -25,6 +27,14 @@ export function AccountSettingsForm({
   async function saveProfile() {
     setError(null)
     setIsSaving(true)
+
+    if (demoMode) {
+      setSaved(true)
+      setIsSaving(false)
+      setTimeout(() => setSaved(false), 2000)
+      return
+    }
+
     const supabase = createClient()
     const {
       data: { user },

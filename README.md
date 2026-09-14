@@ -55,9 +55,14 @@ npm install
 npm run dev
 ```
 
-Visit http://localhost:3000. Sign up, confirm your email (check the inbox
-tied to your Supabase project — local dev uses Supabase's own email
-sending unless you've configured a custom SMTP provider), then log in.
+Visit http://localhost:3000. Without Supabase configured, the app runs in
+**demo mode** — open `/login` and use:
+
+- Email: `demo@publicdata.agents`
+- Password: `DemoPass123!`
+
+Once Supabase is configured (or `NEXT_PUBLIC_DEMO_MODE=false`), sign up,
+confirm your email, then log in.
 
 ## 5. Run the test suite
 
