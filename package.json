@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "agent1:run": "tsx netlify/functions/agent1-new-incorporations.ts"
+    "agent1:run": "tsx scripts/run-agent1.ts",
+    "companies-house:test": "tsx scripts/test-companies-house.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

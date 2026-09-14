@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { deliveryChannelSchema } from '@/lib/validation'
+import { linkChannelToActiveSubscriptions } from '@/lib/subscription-channels'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
@@ -89,11 +90,23 @@ export function ChannelsManager({
       .select('id, channel_type, label, destination, is_active, is_verified')
       .single()
 
-    setIsSaving(false)
     if (insertError) {
+      setIsSaving(false)
       setError(insertError.message)
       return
     }
+
+    const { error: linkError } = await linkChannelToActiveSubscriptions(
+      supabase,
+      data.id,
+      user.id
+    )
+    setIsSaving(false)
+    if (linkError) {
+      setError(linkError)
+      return
+    }
+
     setChannels((prev) => [...prev, data])
     setLabel('')
     setDestination('')

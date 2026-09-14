@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { subscriptionFiltersSchema } from '@/lib/validation'
+import { linkSubscriptionToActiveChannels } from '@/lib/subscription-channels'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
@@ -64,21 +65,40 @@ export function AgentSubscriptionCard({
     }
 
     const nextStatus = isSubscribed ? 'cancelled' : 'active'
-    const { error: upsertError } = await supabase.from('subscriptions').upsert(
-      {
-        user_id: user.id,
-        agent_id: agent.id,
-        status: nextStatus,
-        filters: { postcodePrefix: postcodePrefix || undefined },
-      },
-      { onConflict: 'user_id,agent_id' }
-    )
+    const { data: upserted, error: upsertError } = await supabase
+      .from('subscriptions')
+      .upsert(
+        {
+          user_id: user.id,
+          agent_id: agent.id,
+          status: nextStatus,
+          filters: { postcodePrefix: postcodePrefix || undefined },
+        },
+        { onConflict: 'user_id,agent_id' }
+      )
+      .select('id')
+      .single()
 
-    setIsSaving(false)
     if (upsertError) {
+      setIsSaving(false)
       setError(upsertError.message)
       return
     }
+
+    if (nextStatus === 'active' && upserted?.id) {
+      const { error: linkError } = await linkSubscriptionToActiveChannels(
+        supabase,
+        upserted.id,
+        user.id
+      )
+      if (linkError) {
+        setIsSaving(false)
+        setError(linkError)
+        return
+      }
+    }
+
+    setIsSaving(false)
     setIsSubscribed(nextStatus === 'active')
   }
 
@@ -108,21 +128,40 @@ export function AgentSubscriptionCard({
       return
     }
 
-    const { error: upsertError } = await supabase.from('subscriptions').upsert(
-      {
-        user_id: user.id,
-        agent_id: agent.id,
-        status: isSubscribed ? 'active' : 'cancelled',
-        filters: parsed.data,
-      },
-      { onConflict: 'user_id,agent_id' }
-    )
+    const { data: upserted, error: upsertError } = await supabase
+      .from('subscriptions')
+      .upsert(
+        {
+          user_id: user.id,
+          agent_id: agent.id,
+          status: isSubscribed ? 'active' : 'cancelled',
+          filters: parsed.data,
+        },
+        { onConflict: 'user_id,agent_id' }
+      )
+      .select('id')
+      .single()
 
-    setIsSaving(false)
     if (upsertError) {
+      setIsSaving(false)
       setError(upsertError.message)
       return
     }
+
+    if (isSubscribed && upserted?.id) {
+      const { error: linkError } = await linkSubscriptionToActiveChannels(
+        supabase,
+        upserted.id,
+        user.id
+      )
+      if (linkError) {
+        setIsSaving(false)
+        setError(linkError)
+        return
+      }
+    }
+
+    setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

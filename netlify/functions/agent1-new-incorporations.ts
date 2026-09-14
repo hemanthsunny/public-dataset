@@ -30,6 +30,10 @@ function getServiceRoleClient() {
 }
 
 function yesterdayRange(): { from: string; to: string } {
+  // Allow local/manual overrides so weekend dry-runs can still find data.
+  if (process.env.AGENT1_FROM && process.env.AGENT1_TO) {
+    return { from: process.env.AGENT1_FROM, to: process.env.AGENT1_TO }
+  }
   const now = new Date()
   const yesterday = new Date(now)
   yesterday.setUTCDate(now.getUTCDate() - 1)

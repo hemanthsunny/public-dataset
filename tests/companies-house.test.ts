@@ -37,9 +37,11 @@ describe('fetchNewIncorporations', () => {
 
     await fetchNewIncorporations({ incorporatedFrom: '2026-01-01', incorporatedTo: '2026-01-01' })
 
-    const [, init] = fetchMock.mock.calls[0]
+    const [call] = fetchMock.mock.calls
+    expect(call).toBeDefined()
+    const [, init] = call!
     const expectedAuth = `Basic ${Buffer.from('test-api-key:').toString('base64')}`
-    expect(init.headers.Authorization).toBe(expectedAuth)
+    expect((init as RequestInit).headers).toMatchObject({ Authorization: expectedAuth })
   })
 
   it('builds the request with the expected query parameters', async () => {
@@ -53,8 +55,9 @@ describe('fetchNewIncorporations', () => {
       size: 50,
     })
 
-    const [urlArg] = fetchMock.mock.calls[0]
-    const url = new URL(String(urlArg))
+    const call = fetchMock.mock.calls[0]
+    expect(call).toBeDefined()
+    const url = new URL(String(call![0]))
     expect(url.pathname).toBe('/advanced-search/companies')
     expect(url.searchParams.get('incorporated_from')).toBe('2026-01-01')
     expect(url.searchParams.get('incorporated_to')).toBe('2026-01-07')

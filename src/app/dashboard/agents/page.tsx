@@ -3,6 +3,7 @@ import { AGENTS } from '@/lib/constants/agents'
 import { AgentSubscriptionCard } from './AgentSubscriptionCard'
 import { DEMO_CHANNELS, DEMO_SUBSCRIPTIONS, isDemoMode } from '@/lib/demo'
 import { getSessionUser } from '@/lib/session'
+import { syncUserSubscriptionChannels } from '@/lib/subscription-channels'
 
 export default async function DashboardAgentsPage() {
   let subscriptions = DEMO_SUBSCRIPTIONS.map(({ id, agent_id, status, filters }) => ({
@@ -22,6 +23,11 @@ export default async function DashboardAgentsPage() {
   if (!isDemoMode()) {
     const supabase = await createClient()
     const user = await getSessionUser()
+
+    if (user?.id) {
+      // Backfill subscription_channels for users who subscribed before linking existed.
+      await syncUserSubscriptionChannels(supabase, user.id)
+    }
 
     const { data: subs } = await supabase
       .from('subscriptions')

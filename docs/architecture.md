@@ -38,9 +38,11 @@ See `supabase/migrations/0001_init.sql` for the full schema. Summary:
 - `subscriptions` — a user's subscription to one agent, with a `filters`
   JSONB column (postcode/SIC/region — shape is agent-specific).
 - `delivery_channels` — a user's Slack/Teams/WhatsApp/email destinations.
-- `subscription_channels` — optional many-to-many linking a subscription
-  to specific channels; if empty, the pipeline falls back to all of a
-  user's active channels (see `AgentSubscriptionCard.tsx` comments).
+- `subscription_channels` — many-to-many linking a subscription to the
+  delivery channels it should post to. The dashboard auto-populates this
+  when you subscribe or add a channel (and backfills on Dashboard →
+  Agents). Agent 1 still falls back to all of a user's active channels if
+  the join table has no rows for a subscription.
 - `alerts_log` — audit trail of every dispatch attempt.
 - `companies_cache` — dedupe cache for Agent 1 so re-runs never double-alert.
 

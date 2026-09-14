@@ -108,15 +108,85 @@ git push -u origin main
    Configuration** redirect list (step 2.3), or auth callbacks will fail
    in production.
 
-## 8. Test the Agent 1 pipeline manually
+## 8. Test Agent 1 (New Incorporations)
+
+Agent 1 runs daily on Netlify (`0 6 * * *` UTC). Locally you can verify
+each piece independently.
+
+### 8.1 Confirm Companies House API works
+
+1. Register a free key at
+   https://developer.company-information.service.gov.uk/
+2. Put it in `.env.local` as `COMPANIES_HOUSE_API_KEY` (no quotes).
+3. Run:
+
+```bash
+npm run companies-house:test
+```
+
+You should see HTTP success and a short list of recently incorporated
+companies. A `401 Invalid Authorization` means the key is wrong or
+revoked — generate a new one and update `.env.local` (and Netlify env
+vars).
+
+Optional wider date window (useful on quiet weekends):
+
+```bash
+AGENT1_FROM=2026-09-01 AGENT1_TO=2026-09-14 npm run companies-house:test
+```
+
+### 8.2 Link subscriptions to delivery channels
+
+`subscription_channels` is the join table Agent 1 uses to decide where
+to send alerts.
+
+- **Subscribe** to an agent → links all of your active delivery channels.
+- **Add a delivery channel** → links it to all of your active subscriptions.
+- Opening **Dashboard → Agents** also backfills any missing links.
+
+If the table was empty after you already subscribed, open
+`/dashboard/agents` once (while logged in) and refresh Supabase — you
+should see a row pairing your subscription id with your email channel id.
+
+### 8.3 Run the full Agent 1 pipeline locally
+
+Fill these in `.env.local` (placeholders will be rejected):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API → `service_role`, **not** the anon key)
+- `COMPANIES_HOUSE_API_KEY`
+- For email channels: `RESEND_API_KEY` + `ALERTS_FROM_EMAIL`
+
+Then:
 
 ```bash
 npm run agent1:run
 ```
 
-Runs the same code the scheduled function runs, against yesterday's
-Companies House data, using your `.env.local` credentials — useful for
-verifying delivery channels work before waiting for the cron schedule.
+Override the incorporation date window the same way as the smoke test:
+
+```bash
+AGENT1_FROM=2026-09-01 AGENT1_TO=2026-09-14 npm run agent1:run
+```
+
+The run will:
+
+1. Fetch incorporations from Companies House for the date window
+2. Skip companies already in `companies_cache`
+3. Match your active `new-incorporations` subscription filters (e.g. postcode `MK2`)
+4. Dispatch to linked channels (or all active channels as a fallback)
+5. Write rows to `alerts_log` (`sent` / `failed`)
+
+Check Supabase tables `companies_cache` and `alerts_log` after a
+successful run. If `alerts_log.status` is `failed` with a Resend error,
+configure Resend before email delivery can succeed.
+
+### 8.4 What “working” looks like for your filter
+
+A subscription with `filters.postcodePrefix = "MK2"` only matches
+companies whose registered office postcode starts with `MK2`. If the
+date window has new companies but none in MK2, Agent 1 correctly sends
+**no** alert for that subscription.
 
 ## Project structure
 

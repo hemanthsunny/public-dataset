@@ -123,6 +123,8 @@ describe('agent1-new-incorporations pipeline', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key'
     delete process.env.INTERNAL_FUNCTION_SECRET
+    delete process.env.AGENT1_FROM
+    delete process.env.AGENT1_TO
     fakeClient = new FakeSupabaseClient()
     fetchNewIncorporationsMock.mockReset()
     dispatchToChannelMock.mockReset().mockResolvedValue(undefined)
@@ -141,7 +143,13 @@ describe('agent1-new-incorporations pipeline', () => {
   it('dispatches to a subscriber whose filter matches, and logs the alert as sent', async () => {
     fetchNewIncorporationsMock.mockResolvedValue([makeCompany({ postcode: 'M1 2AB' })])
     fakeClient.seed('subscriptions', [
-      { id: 'sub-1', user_id: 'user-1', filters: { postcodePrefix: 'M1' } },
+      {
+        id: 'sub-1',
+        user_id: 'user-1',
+        agent_id: 'new-incorporations',
+        status: 'active',
+        filters: { postcodePrefix: 'M1' },
+      },
     ])
     fakeClient.seed('subscription_channels', [])
     fakeClient.seed('delivery_channels', [
@@ -167,7 +175,13 @@ describe('agent1-new-incorporations pipeline', () => {
   it('does not alert a subscriber whose filter does not match', async () => {
     fetchNewIncorporationsMock.mockResolvedValue([makeCompany({ postcode: 'M1 2AB' })])
     fakeClient.seed('subscriptions', [
-      { id: 'sub-1', user_id: 'user-1', filters: { postcodePrefix: 'SW1A' } },
+      {
+        id: 'sub-1',
+        user_id: 'user-1',
+        agent_id: 'new-incorporations',
+        status: 'active',
+        filters: { postcodePrefix: 'SW1A' },
+      },
     ])
     fakeClient.seed('subscription_channels', [])
     fakeClient.seed('delivery_channels', [
@@ -186,7 +200,15 @@ describe('agent1-new-incorporations pipeline', () => {
   it('skips a company already present in companies_cache (idempotent re-run)', async () => {
     fetchNewIncorporationsMock.mockResolvedValue([makeCompany({ companyNumber: '99999999' })])
     fakeClient.seed('companies_cache', [{ company_number: '99999999' }])
-    fakeClient.seed('subscriptions', [{ id: 'sub-1', user_id: 'user-1', filters: {} }])
+    fakeClient.seed('subscriptions', [
+      {
+        id: 'sub-1',
+        user_id: 'user-1',
+        agent_id: 'new-incorporations',
+        status: 'active',
+        filters: {},
+      },
+    ])
     fakeClient.seed('subscription_channels', [])
     fakeClient.seed('delivery_channels', [
       { id: 'chan-1', user_id: 'user-1', channel_type: 'slack', destination: 'https://hooks.slack.com/x', is_active: true },
@@ -202,7 +224,15 @@ describe('agent1-new-incorporations pipeline', () => {
 
   it('prefers channels explicitly linked via subscription_channels over the account-wide fallback', async () => {
     fetchNewIncorporationsMock.mockResolvedValue([makeCompany()])
-    fakeClient.seed('subscriptions', [{ id: 'sub-1', user_id: 'user-1', filters: {} }])
+    fakeClient.seed('subscriptions', [
+      {
+        id: 'sub-1',
+        user_id: 'user-1',
+        agent_id: 'new-incorporations',
+        status: 'active',
+        filters: {},
+      },
+    ])
     fakeClient.seed('subscription_channels', [
       {
         subscription_id: 'sub-1',
@@ -233,7 +263,15 @@ describe('agent1-new-incorporations pipeline', () => {
 
   it('logs a failed dispatch without throwing, and keeps processing other channels', async () => {
     fetchNewIncorporationsMock.mockResolvedValue([makeCompany()])
-    fakeClient.seed('subscriptions', [{ id: 'sub-1', user_id: 'user-1', filters: {} }])
+    fakeClient.seed('subscriptions', [
+      {
+        id: 'sub-1',
+        user_id: 'user-1',
+        agent_id: 'new-incorporations',
+        status: 'active',
+        filters: {},
+      },
+    ])
     fakeClient.seed('subscription_channels', [])
     fakeClient.seed('delivery_channels', [
       { id: 'chan-bad', user_id: 'user-1', channel_type: 'slack', destination: 'https://hooks.slack.com/bad', is_active: true },
@@ -252,7 +290,7 @@ describe('agent1-new-incorporations pipeline', () => {
     const statuses = fakeClient.rows('alerts_log').map((r) => r.status).sort()
     expect(statuses).toEqual(['failed', 'sent'])
     const failedRow = fakeClient.rows('alerts_log').find((r) => r.status === 'failed')
-    expect(failedRow.error_message).toMatch(/webhook 404/)
+    expect(failedRow?.error_message).toMatch(/webhook 404/)
   })
 
   it('rejects an unauthenticated manual invocation when INTERNAL_FUNCTION_SECRET is set', async () => {
