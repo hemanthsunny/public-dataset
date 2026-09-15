@@ -12,7 +12,24 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const agent = getAgentById(params.slug)
   if (!agent) return {}
-  return { title: agent.name, description: agent.tagline }
+  return {
+    title: `${agent.name} alerts — ${agent.tagline}`,
+    description: `${agent.description} Data source: ${agent.dataSource}. For ${agent.targetCustomer}`,
+    keywords: [
+      agent.name,
+      agent.tagline,
+      agent.dataSource,
+      'UK public data alerts',
+      'Companies House',
+      'Slack alerts',
+    ],
+    alternates: { canonical: `/agents/${agent.id}` },
+    openGraph: {
+      title: `${agent.name} · Public Data Agents`,
+      description: agent.tagline,
+      url: `/agents/${agent.id}`,
+    },
+  }
 }
 
 export default function AgentDetailPage({ params }: { params: { slug: string } }) {

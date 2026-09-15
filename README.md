@@ -110,83 +110,102 @@ git push -u origin main
 
 ## 8. Test Agent 1 (New Incorporations)
 
-Agent 1 runs daily on Netlify (`0 6 * * *` UTC). Locally you can verify
-each piece independently.
+Agent 1 has two ingestion paths:
 
-### 8.1 Confirm Companies House API works
+1. **REST batch** (Netlify scheduled function, once daily) — `npm run agent1:run`
+2. **Streaming poll-and-resume** (Supabase Edge Function + pg_cron, every ~10 min)
 
-1. Register a free key at
+### 8.1 Confirm Companies House REST API works
+
+1. Register a **REST API** application at
    https://developer.company-information.service.gov.uk/
-2. Put it in `.env.local` as `COMPANIES_HOUSE_API_KEY` (no quotes).
+2. Put the key in `.env.local` as `COMPANIES_HOUSE_API_KEY` (Basic Auth username, empty password — same as Postman).
 3. Run:
 
 ```bash
 npm run companies-house:test
 ```
 
-You should see HTTP success and a short list of recently incorporated
-companies. A `401 Invalid Authorization` means the key is wrong or
-revoked — generate a new one and update `.env.local` (and Netlify env
-vars).
+**Working:** prints `OK — returned N companies`.  
+**401:** wrong/revoked key, or you pasted a *streaming* key into the REST slot (they are not interchangeable).
 
-Optional wider date window (useful on quiet weekends):
+### 8.2 Company search (logged-in UI)
 
-```bash
-AGENT1_FROM=2026-09-01 AGENT1_TO=2026-09-14 npm run companies-house:test
-```
+After logging in, open **Dashboard → My agents → New Incorporations** and click the
+**search icon** next to the title. That modal calls `GET /api/companies/search`
+(REST `/search/companies`) and is only available to authenticated users.
 
-### 8.2 Link subscriptions to delivery channels
+The same `SearchIconButton` component is the shared pattern for any future in-app search.
 
-`subscription_channels` is the join table Agent 1 uses to decide where
-to send alerts.
+### 8.3 Streaming alerts via Supabase Edge cron (no Fly/Railway)
 
-- **Subscribe** to an agent → links all of your active delivery channels.
-- **Add a delivery channel** → links it to all of your active subscriptions.
-- Opening **Dashboard → Agents** also backfills any missing links.
+Companies House streams support a resumable `timepoint` cursor, so we **poll
+for ~20 seconds on a schedule** instead of holding an always-on socket.
 
-If the table was empty after you already subscribed, open
-`/dashboard/agents` once (while logged in) and refresh Supabase — you
-should see a row pairing your subscription id with your email channel id.
-
-### 8.3 Run the full Agent 1 pipeline locally
-
-Fill these in `.env.local` (placeholders will be rejected):
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API → `service_role`, **not** the anon key)
-- `COMPANIES_HOUSE_API_KEY`
-- For email channels: `RESEND_API_KEY` + `ALERTS_FROM_EMAIL`
-
-Then:
+1. In the Supabase SQL editor, run migration `0006_stream_state.sql`.
+2. Deploy the function:
 
 ```bash
-npm run agent1:run
+npx supabase login
+npx supabase link --project-ref <your-ref>
+npx supabase functions deploy companies-house-poll
+npx supabase secrets set COMPANIES_HOUSE_STREAM_API_KEY=your-streaming-api-key
 ```
 
-Override the incorporation date window the same way as the smoke test:
+3. Schedule it (enable `pg_cron` + `pg_net` in Database → Extensions), then:
+
+```sql
+select cron.schedule(
+  'companies-house-poll',
+  '*/10 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://<project-ref>.supabase.co/functions/v1/companies-house-poll',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || '<SERVICE_ROLE_KEY>'
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+4. Manual invoke to verify:
+
+```bash
+curl -X POST "https://<project-ref>.supabase.co/functions/v1/companies-house-poll" \
+  -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
+```
+
+Check `stream_state`, `stream_events`, and `companies_cache` afterwards.
+
+### 8.4 Link subscriptions to delivery channels
+
+- **Subscribe** → links all active delivery channels into `subscription_channels`
+- **Add a channel** → links it to all active subscriptions
+- Opening **Dashboard → Agents** backfills missing links
+
+### 8.5 Full REST Agent 1 pipeline locally
+
+Needs real `SUPABASE_SERVICE_ROLE_KEY`, REST key, and (for email) Resend:
 
 ```bash
 AGENT1_FROM=2026-09-01 AGENT1_TO=2026-09-14 npm run agent1:run
 ```
 
-The run will:
+### 8.6 Automated tests
 
-1. Fetch incorporations from Companies House for the date window
-2. Skip companies already in `companies_cache`
-3. Match your active `new-incorporations` subscription filters (e.g. postcode `MK2`)
-4. Dispatch to linked channels (or all active channels as a fallback)
-5. Write rows to `alerts_log` (`sent` / `failed`)
+```bash
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
 
-Check Supabase tables `companies_cache` and `alerts_log` after a
-successful run. If `alerts_log.status` is `failed` with a Resend error,
-configure Resend before email delivery can succeed.
-
-### 8.4 What “working” looks like for your filter
-
-A subscription with `filters.postcodePrefix = "MK2"` only matches
-companies whose registered office postcode starts with `MK2`. If the
-date window has new companies but none in MK2, Agent 1 correctly sends
-**no** alert for that subscription.
+Coverage includes Companies House REST + stream parsers, poll-and-resume
+regression (mocked stream body), search API auth/e2e-style route tests, Agent 1
+pipeline, filters, dispatch, and the shared search modal UI.
 
 ## Project structure
 

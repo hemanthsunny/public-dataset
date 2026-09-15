@@ -1,0 +1,5 @@
+# Deploy with: supabase functions deploy companies-house-poll
+# Invoke via pg_cron every 10 minutes (see README § Streaming alerts).
+
+[functions.companies-house-poll]
+verify_jwt = false

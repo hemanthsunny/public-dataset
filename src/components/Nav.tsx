@@ -11,17 +11,22 @@ export async function Nav() {
         aria-label="Main"
         className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6"
       >
-        <Link href="/" className="text-base font-semibold text-slate-900">
+        <Link href={user ? '/dashboard' : '/'} className="text-base font-semibold text-slate-900">
           Public Data Agents
         </Link>
         <div className="flex items-center gap-4 text-sm">
-          <Link href="/agents" className="text-slate-600 hover:text-slate-900">
-            Agents
-          </Link>
+          {!user && (
+            <Link href="/agents" className="text-slate-600 hover:text-slate-900">
+              Agents
+            </Link>
+          )}
           {user ? (
             <>
               <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">
                 Dashboard
+              </Link>
+              <Link href="/dashboard/agents" className="text-slate-600 hover:text-slate-900">
+                My agents
               </Link>
               <SignOutButton />
             </>

@@ -1,6 +1,27 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AGENTS } from '@/lib/constants/agents'
 import { Card } from '@/components/ui/Card'
+
+export const metadata: Metadata = {
+  title: 'UK Companies House & public register alerts, delivered to chat',
+  description:
+    'Get Companies House new incorporation alerts, dissolutions, FSA hygiene ratings and more — filtered and posted to Slack, Teams, WhatsApp or email. No dashboard to check.',
+  keywords: [
+    'Companies House new incorporations',
+    'UK company alerts Slack',
+    'new business leads by postcode',
+    'Companies House monitoring',
+    'public data agents UK',
+  ],
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Public Data Agents — UK public register alerts',
+    description:
+      'Companies House and UK public-register alerts delivered where you already work.',
+    url: '/',
+  },
+}
 
 export default function HomePage() {
   const liveAgents = AGENTS.filter((a) => a.isAvailable)

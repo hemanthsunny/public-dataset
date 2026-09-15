@@ -4,8 +4,23 @@ import { AGENTS } from '@/lib/constants/agents'
 import { Card } from '@/components/ui/Card'
 
 export const metadata: Metadata = {
-  title: 'Agents',
-  description: 'Every UK public-register alert agent — available now and planned.',
+  title: 'UK public data alert agents — Companies House, FSA & more',
+  description:
+    'Browse every Public Data Agent: New Incorporations, Dissolutions & Strike-Offs, FSA Hygiene Ratings, planning, CCJs, street works and NHS public data watchers.',
+  keywords: [
+    'Companies House agents',
+    'FSA hygiene rating alerts',
+    'UK dissolution alerts',
+    'planning application alerts',
+    'CCJ lookup UK',
+    'public register agents',
+  ],
+  alternates: { canonical: '/agents' },
+  openGraph: {
+    title: 'All Public Data Agents',
+    description: 'Every UK public-register alert agent — available now and planned.',
+    url: '/agents',
+  },
 }
 
 export const revalidate = 3600 // static content, safe to cache for an hour

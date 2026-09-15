@@ -133,3 +133,50 @@ describe('fetchNewIncorporations', () => {
     ).rejects.toThrow(/429/)
   })
 })
+
+describe('searchCompanies (REST)', () => {
+  beforeEach(() => {
+    process.env.COMPANIES_HOUSE_API_KEY = 'test-api-key'
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('queries /search/companies with Basic auth', async () => {
+    const { searchCompanies } = await import('@/lib/companies-house')
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        items: [
+          {
+            company_number: '14083440',
+            title: 'ACME LTD',
+            company_status: 'active',
+            company_type: 'ltd',
+            date_of_creation: '2022-05-05',
+            address_snippet: 'London',
+          },
+        ],
+      })
+    )
+
+    const results = await searchCompanies('acme')
+    expect(results[0]).toMatchObject({
+      companyNumber: '14083440',
+      companyName: 'ACME LTD',
+      companyStatus: 'active',
+    })
+
+    const call = fetchMock.mock.calls[0]
+    expect(String(call?.[0])).toContain('/search/companies')
+    expect(String(call?.[0])).toContain('q=acme')
+    const init = call?.[1] as RequestInit
+    expect(init.headers).toMatchObject({
+      Authorization: `Basic ${Buffer.from('test-api-key:').toString('base64')}`,
+    })
+  })
+})

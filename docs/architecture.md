@@ -6,16 +6,26 @@
                          ┌──────────────────────┐
                          │   Next.js (Netlify)  │
   Browser  ───────────▶  │  App Router + RSC     │ ──▶ Supabase (Postgres + Auth)
-                         │  Tailwind UI           │      · RLS-protected tables
+                         │  company search API   │      · RLS-protected tables
                          └──────────────────────┘      · Auth (signup/login)
-                                    ▲
-                                    │ scheduled (cron)
+                                    ▲                  · stream_state cursor
+                                    │ daily REST
                          ┌──────────────────────┐
-                         │ Netlify Function       │ ──▶ Companies House API
-                         │ agent1-new-incorp...   │ ──▶ Slack / Teams / Email / WhatsApp
+                         │ Netlify Function       │ ──▶ Companies House REST
+                         │ agent1-new-incorp...   │ ──▶ Slack / Teams / Email
+                         └──────────────────────┘
+                                    ▲
+                                    │ every ~10 min (pg_cron)
+                         ┌──────────────────────┐
+                         │ Supabase Edge Function│ ──▶ Companies House STREAM
+                         │ companies-house-poll  │     (timepoint resume)
                          └──────────────────────┘
 ```
 
+Streaming uses **poll-and-resume**, not an always-on Fly/Railway worker: each
+run opens the stream from the last `timepoint`, reads ~20s of NDJSON, writes
+`companies_cache` / `stream_events`, saves the cursor, and exits. CH streams
+already reset daily, so reconnect logic is required either way.
 ## Why this stack
 
 - **Next.js App Router** — Server Components read Supabase directly with

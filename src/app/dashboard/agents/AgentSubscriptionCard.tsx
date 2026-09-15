@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { subscriptionFiltersSchema } from '@/lib/validation'
 import { linkSubscriptionToActiveChannels } from '@/lib/subscription-channels'
@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/Alert'
+import { SearchIconButton, type SearchAdapter } from '@/components/SearchIconButton'
 import type { AgentMeta } from '@/lib/constants/agents'
 
 interface Subscription {
@@ -22,6 +23,14 @@ interface Channel {
   channel_type: string
   label: string | null
   destination: string
+}
+
+type CompanyHit = {
+  companyNumber: string
+  companyName: string
+  companyStatus: string | null
+  incorporationDate: string | null
+  addressSnippet: string | null
 }
 
 export function AgentSubscriptionCard({
@@ -42,6 +51,36 @@ export function AgentSubscriptionCard({
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  const companySearchAdapter = useMemo<SearchAdapter<CompanyHit>>(
+    () => ({
+      title: 'Search UK companies',
+      description: 'Companies House REST search — name or company number.',
+      placeholder: 'e.g. Acme Ltd or 14083440',
+      emptyMessage: 'No companies matched that query.',
+      getKey: (item) => item.companyNumber,
+      search: async (query) => {
+        const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`)
+        const body = (await res.json()) as { results?: CompanyHit[]; error?: string }
+        if (!res.ok) throw new Error(body.error ?? 'Search failed')
+        return body.results ?? []
+      },
+      renderItem: (item) => (
+        <div>
+          <p className="font-medium text-slate-900">{item.companyName}</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {item.companyNumber}
+            {item.companyStatus ? ` · ${item.companyStatus}` : ''}
+            {item.incorporationDate ? ` · incorp. ${item.incorporationDate}` : ''}
+          </p>
+          {item.addressSnippet && (
+            <p className="mt-0.5 text-xs text-slate-400">{item.addressSnippet}</p>
+          )}
+        </div>
+      ),
+    }),
+    []
+  )
 
   async function toggleSubscription() {
     setError(null)
@@ -169,8 +208,16 @@ export function AgentSubscriptionCard({
   return (
     <Card>
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">{agent.name}</h2>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-slate-900">{agent.name}</h2>
+            {agent.id === 'new-incorporations' && (
+              <SearchIconButton
+                aria-label="Search UK companies"
+                adapter={companySearchAdapter}
+              />
+            )}
+          </div>
           <p className="mt-1 text-sm text-slate-600">{agent.tagline}</p>
         </div>
         <Button

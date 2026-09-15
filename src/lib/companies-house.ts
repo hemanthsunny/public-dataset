@@ -1,12 +1,11 @@
 /**
- * Minimal Companies House API client for Agent 1 (New Incorporations).
+ * Companies House REST API client.
  *
- * Docs: https://developer.company-information.service.gov.uk/api/docs/
- * Auth: HTTP Basic, API key as the username, empty password.
+ * Docs: https://developer.company-information.service.gov.uk/
+ * Auth: HTTP Basic — API key as username, empty password (same as Postman).
  *
- * The Advanced Search endpoint's exact query parameters do change
- * occasionally — verify against the current docs before relying on this
- * in production; this client isolates that surface to one file.
+ * Streaming alerts use COMPANIES_HOUSE_STREAM_API_KEY in `worker/`
+ * (Fly.io always-on process) — REST and stream keys are not interchangeable.
  */
 
 const BASE_URL = 'https://api.company-information.service.gov.uk'
@@ -21,6 +20,16 @@ export interface CompanyIncorporation {
   raw: Record<string, unknown>
 }
 
+export interface CompanySearchResult {
+  companyNumber: string
+  companyName: string
+  companyStatus: string | null
+  companyType: string | null
+  incorporationDate: string | null
+  addressSnippet: string | null
+  raw: Record<string, unknown>
+}
+
 interface AdvancedSearchParams {
   incorporatedFrom: string // YYYY-MM-DD
   incorporatedTo: string // YYYY-MM-DD
@@ -28,7 +37,7 @@ interface AdvancedSearchParams {
   size?: number
 }
 
-function getApiKey(): string {
+function getRestApiKey(): string {
   const key = process.env.COMPANIES_HOUSE_API_KEY
   if (!key) {
     throw new Error('Missing COMPANIES_HOUSE_API_KEY environment variable.')
@@ -36,8 +45,12 @@ function getApiKey(): string {
   return key
 }
 
+export function companiesHouseRestAuthHeader(apiKey = getRestApiKey()): string {
+  return `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`
+}
+
 function authHeader(): string {
-  return `Basic ${Buffer.from(`${getApiKey()}:`).toString('base64')}`
+  return companiesHouseRestAuthHeader()
 }
 
 /**
@@ -80,15 +93,7 @@ export async function fetchNewIncorporations(
 
     const items = body.items ?? []
     for (const item of items) {
-      results.push({
-        companyNumber: item.company_number,
-        companyName: item.company_name,
-        incorporationDate: item.date_of_creation ?? null,
-        sicCodes: item.sic_codes ?? [],
-        postcode: item.registered_office_address?.postal_code ?? null,
-        address: item.registered_office_address ?? null,
-        raw: item,
-      })
+      results.push(mapIncorporation(item))
     }
 
     startIndex += size
@@ -96,4 +101,72 @@ export async function fetchNewIncorporations(
   }
 
   return results
+}
+
+/**
+ * Basic company search (name or number) via the REST search endpoint.
+ */
+export async function searchCompanies(
+  query: string,
+  options: { size?: number } = {}
+): Promise<CompanySearchResult[]> {
+  const q = query.trim()
+  if (!q) return []
+
+  const size = options.size ?? 10
+  const url = new URL('/search/companies', BASE_URL)
+  url.searchParams.set('q', q)
+  url.searchParams.set('items_per_page', String(size))
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader() },
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      `Companies House search error ${response.status}: ${await response.text().catch(() => '')}`
+    )
+  }
+
+  const body = (await response.json()) as { items?: Array<Record<string, any>> }
+  return (body.items ?? []).map((item) => ({
+    companyNumber: item.company_number,
+    companyName: item.title ?? item.company_name ?? 'Unknown company',
+    companyStatus: item.company_status ?? null,
+    companyType: item.company_type ?? null,
+    incorporationDate: item.date_of_creation ?? null,
+    addressSnippet: item.address_snippet ?? null,
+    raw: item,
+  }))
+}
+
+/**
+ * Lookup a single company by number (REST profile endpoint).
+ */
+export async function getCompanyProfile(companyNumber: string): Promise<CompanyIncorporation> {
+  const number = companyNumber.trim().toUpperCase()
+  const response = await fetch(`${BASE_URL}/company/${encodeURIComponent(number)}`, {
+    headers: { Authorization: authHeader() },
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      `Companies House profile error ${response.status}: ${await response.text().catch(() => '')}`
+    )
+  }
+
+  const item = (await response.json()) as Record<string, any>
+  return mapIncorporation(item)
+}
+
+export function mapIncorporation(item: Record<string, any>): CompanyIncorporation {
+  return {
+    companyNumber: item.company_number,
+    companyName: item.company_name,
+    incorporationDate: item.date_of_creation ?? null,
+    sicCodes: item.sic_codes ?? [],
+    postcode: item.registered_office_address?.postal_code ?? null,
+    address: item.registered_office_address ?? null,
+    raw: item,
+  }
 }

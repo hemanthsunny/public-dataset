@@ -137,6 +137,38 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['companies_cache']['Row']>
         Relationships: Relationships
       }
+      stream_state: {
+        Row: {
+          stream: string
+          timepoint: number | null
+          updated_at: string
+        }
+        Insert: {
+          stream: string
+          timepoint?: number | null
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['stream_state']['Row']>
+        Relationships: Relationships
+      }
+      stream_events: {
+        Row: {
+          id: string
+          stream: string
+          timepoint: number
+          resource_id: string | null
+          event_type: string | null
+          payload: Record<string, unknown>
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['stream_events']['Row']> & {
+          stream: string
+          timepoint: number
+          payload: Record<string, unknown>
+        }
+        Update: Partial<Database['public']['Tables']['stream_events']['Row']>
+        Relationships: Relationships
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

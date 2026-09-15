@@ -33,7 +33,8 @@ describe('dispatch', () => {
 
       await sendSlackAlert('https://hooks.slack.com/services/x', message)
 
-      const [url, init] = fetchMock.mock.calls[0]
+      const call = fetchMock.mock.calls[0] as [unknown, any]
+      const [url, init] = call
       expect(url).toBe('https://hooks.slack.com/services/x')
       const body = JSON.parse(init.body)
       expect(body.text).toBe('Test alert')
@@ -57,7 +58,8 @@ describe('dispatch', () => {
 
       await sendTeamsAlert('https://outlook.office.com/webhook/x', message)
 
-      const [, init] = fetchMock.mock.calls[0]
+      const call = fetchMock.mock.calls[0] as [unknown, any]
+      const [, init] = call
       const body = JSON.parse(init.body)
       expect(body['@type']).toBe('MessageCard')
       expect(body.title).toBe('Test alert')
@@ -81,7 +83,8 @@ describe('dispatch', () => {
 
       await sendEmailAlert('user@example.com', message)
 
-      const [url, init] = fetchMock.mock.calls[0]
+      const call = fetchMock.mock.calls[0] as [unknown, any]
+      const [url, init] = call
       expect(url).toBe('https://api.resend.com/emails')
       expect(init.headers.Authorization).toBe('Bearer test-resend-key')
       const body = JSON.parse(init.body)
@@ -108,7 +111,8 @@ describe('dispatch', () => {
 
       await sendWhatsAppAlert('+447700900000', message)
 
-      const [url, init] = fetchMock.mock.calls[0]
+      const call = fetchMock.mock.calls[0] as [unknown, any]
+      const [url, init] = call
       expect(url).toBe('https://api.twilio.com/2010-04-01/Accounts/ACxxxx/Messages.json')
       const params = new URLSearchParams(init.body)
       expect(params.get('To')).toBe('whatsapp:+447700900000')
