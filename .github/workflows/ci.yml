@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -42,5 +42,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Dependency audit (fails on high/critical)
-        run: npm audit --audit-level=high
+      - name: Dependency audit (fails on high/critical, production deps only)
+        # Dev-only tooling (eslint-config-next's fast-glob/braces chain) can
+        # carry advisories with no fix released upstream yet; those never
+        # ship to production. Production dependencies must stay clean.
+        run: npm audit --omit=dev --audit-level=high

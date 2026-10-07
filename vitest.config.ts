@@ -6,9 +6,8 @@ export default defineConfig({
     jsx: 'automatic',
   },
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     include: ['tests/**/*.{test,spec}.{ts,tsx}'],
-    environmentMatchGlobs: [['tests/**/*.tsx', 'jsdom']],
   },
   resolve: {
     alias: {
