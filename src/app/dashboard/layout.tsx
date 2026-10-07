@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/agents', label: 'Agents' },
   { href: '/dashboard/channels', label: 'Delivery channels' },
   { href: '/dashboard/settings', label: 'Settings' },
+  { href: '/dashboard/acquisition', label: 'Acquisition finder' },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
