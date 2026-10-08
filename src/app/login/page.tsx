@@ -3,10 +3,9 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { DEMO_CREDENTIALS, isDemoMode } from '@/lib/demo'
+import { isDemoMode } from '@/lib/demo'
 import { loginSchema } from '@/lib/validation'
 import { AuthForm } from '@/components/AuthForm'
-import { Alert } from '@/components/ui/Alert'
 
 function LoginForm() {
   const router = useRouter()
@@ -65,19 +64,6 @@ export default function LoginPage() {
           Create an account
         </Link>
       </p>
-
-      {demo && (
-        <div className="mt-6">
-          <Alert tone="info">
-            <p className="font-medium">Demo mode — use these credentials:</p>
-            <p className="mt-1 font-mono text-sm">
-              {DEMO_CREDENTIALS.email}
-              <br />
-              {DEMO_CREDENTIALS.password}
-            </p>
-          </Alert>
-        </div>
-      )}
 
       <div className="mt-8">
         <Suspense fallback={null}>

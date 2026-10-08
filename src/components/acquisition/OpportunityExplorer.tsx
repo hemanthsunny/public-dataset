@@ -337,18 +337,11 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-slate-500">{r.region}</td>
                   <td className="whitespace-nowrap px-3 py-2 tabular-nums">{r.population.toLocaleString()}</td>
-                  <td className="whitespace-nowrap px-3 py-2 tabular-nums">
-                    {r.sectorEst.toLocaleString()}
-                    {' '}
-                    <span
-                      title={r.is_exact ? EXACT_TOOLTIP : SAMPLE_TOOLTIP}
-                      className={`ml-1 cursor-help rounded-full border px-2 py-0.5 text-[10px] ${
-                        r.is_exact ? 'border-emerald-300 text-emerald-700' : 'border-amber-300 text-amber-700'
-                      }`}
-                    >
-                      {r.is_exact ? 'exact' : 'sample'}
-                    </span>{' '}
-                    ({r.sectorPer10k.toFixed(2)}/10k)
+                  <td
+                    className="whitespace-nowrap px-3 py-2 tabular-nums"
+                    title={r.is_exact ? EXACT_TOOLTIP : SAMPLE_TOOLTIP}
+                  >
+                    {r.sectorEst.toLocaleString()} ({r.sectorPer10k.toFixed(2)}/10k)
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 tabular-nums">{r.food_per_10k.toFixed(1)}</td>
                   <td className="whitespace-nowrap px-3 py-2">
