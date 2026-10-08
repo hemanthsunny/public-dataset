@@ -42,5 +42,13 @@ create policy "opportunity_metrics_select"
   to authenticated
   using (true);
 
+-- Allow unauthenticated (anon) reads too, since the acquisition finder page
+-- is public-facing and should not depend on a signed-in Supabase session.
+create policy "opportunity_metrics_select_anon"
+  on public.la_opportunity_metrics
+  for select
+  to anon
+  using (true);
+
 comment on table public.la_opportunity_metrics is
   'Reference dataset for the Acquisition Opportunity tool: per-local-authority business density metrics sourced from the FSA food hygiene ratings open data register, with full provenance per row so every number in the UI can be traced back to its source.';
