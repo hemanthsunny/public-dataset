@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { Card } from '@/components/ui/Card'
 
 export interface OpportunityRow {
@@ -60,6 +60,24 @@ const EXACT_TOOLTIP = 'Exact count — every record in this area’s FSA registe
 
 type SortKey = 'name' | 'region' | 'population' | 'sectorPer10k' | 'foodPer10k' | 'score'
 
+interface FsaRecord {
+  name: string
+  type: string
+  rating: string | null
+  ratingDate: string | null
+  postcode: string | null
+  address: string
+}
+
+interface FsaDetailState {
+  status: 'loading' | 'ready' | 'error'
+  records?: FsaRecord[]
+  totalInFile?: number
+  returned?: number
+  itemCount?: number | null
+  error?: string
+}
+
 export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
   const [region, setRegion] = useState<string>('All regions')
   const [sector, setSector] = useState<SectorKey>('food')
@@ -67,6 +85,37 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>('score')
   const [sortDir, setSortDir] = useState<1 | -1>(-1)
   const [openDetails, setOpenDetails] = useState<string | null>(null)
+  const [fsaDetails, setFsaDetails] = useState<Record<string, FsaDetailState>>({})
+  const fsaLoadedRef = useRef<Set<string>>(new Set())
+
+  function loadFsaRecords(laName: string, sourceUrl: string) {
+    if (fsaLoadedRef.current.has(laName)) return
+    fsaLoadedRef.current.add(laName)
+    setFsaDetails((prev) => ({ ...prev, [laName]: { status: 'loading' } }))
+
+    fetch(`/api/fsa/records?url=${encodeURIComponent(sourceUrl)}`)
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.error || 'Failed to load the live register.')
+        setFsaDetails((prev) => ({
+          ...prev,
+          [laName]: {
+            status: 'ready',
+            records: data.records,
+            totalInFile: data.totalInFile,
+            returned: data.returned,
+            itemCount: data.itemCount,
+          },
+        }))
+      })
+      .catch((err: Error) => {
+        fsaLoadedRef.current.delete(laName)
+        setFsaDetails((prev) => ({
+          ...prev,
+          [laName]: { status: 'error', error: err.message },
+        }))
+      })
+  }
 
   const regions = useMemo(
     () => ['All regions', ...Array.from(new Set(rows.map((r) => r.region))).sort()],
@@ -316,7 +365,11 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                   <td className="whitespace-nowrap px-3 py-2">
                     <button
                       type="button"
-                      onClick={() => setOpenDetails(openDetails === r.la_name ? null : r.la_name)}
+                      onClick={() => {
+                        const next = openDetails === r.la_name ? null : r.la_name
+                        setOpenDetails(next)
+                        if (next && r.source_url) loadFsaRecords(next, r.source_url)
+                      }}
                       className="text-xs font-medium text-brand-600 hover:text-brand-700"
                     >
                       {openDetails === r.la_name ? 'Hide details' : 'View details'}
@@ -332,19 +385,6 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                             Where this came from
                           </div>
                           <p className="mt-1">{r.method_notes}</p>
-                          {r.source_url && (
-                            <p className="mt-2">
-                              Source file:{' '}
-                              <a
-                                href={r.source_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="break-all text-brand-600 hover:underline"
-                              >
-                                {r.source_url}
-                              </a>
-                            </p>
-                          )}
                           <p className="mt-2 text-xs text-slate-500">
                             Fetched {r.fetch_date ?? 'unknown date'}
                             {!r.is_exact && r.sample_size != null && r.scale_factor != null && (
@@ -361,6 +401,76 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                           </div>
                           <p className="mt-1 tabular-nums">{r.population.toLocaleString()}</p>
                           <p className="mt-1 text-xs text-slate-500">{r.population_source}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {'FSA register — live preview'}
+                          </div>
+                          {r.source_url && (
+                            <a
+                              href={r.source_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-medium text-brand-600 hover:underline"
+                            >
+                              {'Open raw XML ↗'}
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          {!r.source_url && (
+                            <p className="p-3 text-sm text-slate-500">No source file recorded for this area.</p>
+                          )}
+                          {r.source_url && fsaDetails[r.la_name]?.status === 'loading' && (
+                            <p className="p-3 text-sm text-slate-500">{'Loading live register data…'}</p>
+                          )}
+                          {r.source_url && fsaDetails[r.la_name]?.status === 'error' && (
+                            <p className="p-3 text-sm text-rose-600">
+                              {fsaDetails[r.la_name]?.error ?? 'Could not load the register.'}
+                            </p>
+                          )}
+                          {r.source_url && fsaDetails[r.la_name]?.status === 'ready' && (
+                            <>
+                              <div className="max-h-80 overflow-y-auto">
+                                <table className="w-full text-xs">
+                                  <thead className="sticky top-0 bg-slate-50">
+                                    <tr className="text-left text-[10px] uppercase tracking-wide text-slate-500">
+                                      <th className="px-2 py-1.5">Business</th>
+                                      <th className="px-2 py-1.5">Type</th>
+                                      <th className="px-2 py-1.5">Rating</th>
+                                      <th className="px-2 py-1.5">Rated</th>
+                                      <th className="px-2 py-1.5">Postcode</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(fsaDetails[r.la_name]?.records ?? []).map((rec, idx) => (
+                                      <tr key={idx} className="border-t border-slate-100">
+                                        <td className="px-2 py-1.5">{rec.name}</td>
+                                        <td className="px-2 py-1.5 text-slate-500">{rec.type}</td>
+                                        <td className="px-2 py-1.5 tabular-nums">{rec.rating ?? '—'}</td>
+                                        <td className="px-2 py-1.5 text-slate-500">{rec.ratingDate ?? '—'}</td>
+                                        <td className="px-2 py-1.5 tabular-nums">{rec.postcode ?? '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p className="border-t border-slate-100 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-500">
+                                {'Showing '}
+                                {fsaDetails[r.la_name]?.returned}
+                                {' of '}
+                                {fsaDetails[r.la_name]?.totalInFile?.toLocaleString()}
+                                {' records read from the live FSA file'}
+                                {fsaDetails[r.la_name]?.itemCount != null &&
+                                  ` (register header reports ${fsaDetails[r.la_name]?.itemCount?.toLocaleString()} total)`}
+                                .
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </td>
