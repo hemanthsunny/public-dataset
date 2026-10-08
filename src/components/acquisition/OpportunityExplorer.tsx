@@ -46,6 +46,18 @@ function norm(values: number[], v: number) {
   return (v - min) / (max - min)
 }
 
+function formatCompact(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return n.toLocaleString()
+}
+
+const SAMPLE_TOOLTIP =
+  'Estimated from a partial sample of this area’s FSA register, scaled to the area’s true total. ' +
+  'A value of 0 means none of the sampled records fell in this category — it does not mean the true count is zero. ' +
+  'Open "View details" for the exact sample size and scale factor.'
+const EXACT_TOOLTIP = 'Exact count — every record in this area’s FSA register was read, nothing scaled.'
+
 type SortKey = 'name' | 'region' | 'population' | 'sectorPer10k' | 'foodPer10k' | 'score'
 
 export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
@@ -61,6 +73,16 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
     [rows]
   )
   const sectorDef = SECTORS.find((s) => s.key === sector)!
+
+  const overview = useMemo(() => {
+    const regionCount = new Set(rows.map((r) => r.region)).size
+    const totalFood = rows.reduce((sum, r) => sum + (r.food_total ?? 0), 0)
+    const avgDensity = rows.length
+      ? rows.reduce((sum, r) => sum + (r.food_per_10k ?? 0), 0) / rows.length
+      : 0
+    const exactCount = rows.filter((r) => r.is_exact).length
+    return { regionCount, totalFood, avgDensity, exactCount }
+  }, [rows])
 
   const scored = useMemo(() => {
     const filtered = rows.filter((r) => region === 'All regions' || r.region === region)
@@ -98,6 +120,11 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
     return withScore
   }, [rows, region, sectorDef, weight, sortKey, sortDir])
 
+  const topOpportunities = useMemo(
+    () => [...scored].sort((a, b) => b.score - a.score).slice(0, 10),
+    [scored]
+  )
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === 1 ? -1 : 1) as 1 | -1)
@@ -118,7 +145,44 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
 
   return (
     <div>
-      <Card className="flex flex-wrap items-end gap-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Local authorities
+          </div>
+          <div className="mt-1 text-2xl font-semibold text-slate-900">
+            {rows.length}
+            <span className="text-sm font-normal text-slate-400">/297</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Food businesses tracked
+          </div>
+          <div className="mt-1 text-2xl font-semibold text-slate-900">
+            {formatCompact(overview.totalFood)}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-500">exact FSA register totals</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Avg. food density
+          </div>
+          <div className="mt-1 text-2xl font-semibold text-slate-900">
+            {overview.avgDensity.toFixed(1)}
+            <span className="text-sm font-normal text-slate-400"> /10k people</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Regions covered
+          </div>
+          <div className="mt-1 text-2xl font-semibold text-slate-900">{overview.regionCount}</div>
+          <div className="mt-0.5 text-xs text-slate-500">{overview.exactCount} areas with exact sector counts</div>
+        </div>
+      </div>
+
+      <Card className="mt-6 flex flex-wrap items-end gap-6">
         <div>
           <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">
             Region
@@ -166,6 +230,38 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
         </div>
       </Card>
 
+      <Card className="mt-6">
+        <h2 className="text-sm font-semibold text-slate-900">
+          {'Top 10 opportunities — '}
+          {sectorDef.label}
+          {region !== 'All regions' ? ` · ${region}` : ''}
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Ranked by the opportunity score at the current weighting. Score blends market size
+          (population) against competition (sector density per 10k people).
+        </p>
+        <div className="mt-4 space-y-3">
+          {topOpportunities.map((r, i) => (
+            <div key={r.la_name}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="truncate font-medium text-slate-900">
+                  <span className="mr-2 text-xs text-slate-400">{i + 1}</span>
+                  {r.la_name}
+                  <span className="ml-2 text-xs font-normal text-slate-500">{r.region}</span>
+                </span>
+                <span className="shrink-0 tabular-nums text-slate-600">{r.score}</span>
+              </div>
+              <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-brand-600"
+                  style={{ width: `${Math.max(r.score, 2)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <Card className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead>
@@ -196,7 +292,8 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                     {r.sectorEst.toLocaleString()}
                     {' '}
                     <span
-                      className={`ml-1 rounded-full border px-2 py-0.5 text-[10px] ${
+                      title={r.is_exact ? EXACT_TOOLTIP : SAMPLE_TOOLTIP}
+                      className={`ml-1 cursor-help rounded-full border px-2 py-0.5 text-[10px] ${
                         r.is_exact ? 'border-emerald-300 text-emerald-700' : 'border-amber-300 text-amber-700'
                       }`}
                     >

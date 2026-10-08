@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="flex flex-col gap-8 md:flex-row">
-        <nav aria-label="Dashboard" className="shrink-0 md:w-48">
+        <nav aria-label="Dashboard" className="shrink-0 md:sticky md:top-20 md:w-48 md:self-start">
           <ul className="flex gap-2 overflow-x-auto md:flex-col md:gap-1">
             {NAV_ITEMS.map((item) => (
               <li key={item.href}>

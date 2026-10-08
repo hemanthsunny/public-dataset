@@ -6,7 +6,7 @@ export async function Nav() {
   const user = await getSessionUser()
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <nav
         aria-label="Main"
         className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6"
