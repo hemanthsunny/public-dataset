@@ -15,7 +15,7 @@ const DEMO_ROWS: OpportunityRow[] = [
     source_url: 'https://ratings.food.gov.uk/api/open-data-files/FHRS297en-GB.xml',
     fetch_date: '2026-10-07',
     method_notes: 'Exact full count — the FSA file for this area fit in one fetch, every record read.',
-    population_source: 'ONS mid-year population estimate (approximate, pending verified ONS file import)',
+    population_source: 'ONS mid-2024 local authority population estimates',
   },
 ]
 
@@ -54,12 +54,7 @@ export default async function AcquisitionPage() {
       )}
 
       <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <strong>Coverage: {rows.length} of 297 England local authorities.</strong> This is a first
-        pass, not the full map. Sector counts for every area except Babergh are estimated from a
-        partial sample of that area&rsquo;s FSA register, scaled to the area&rsquo;s true total —
-        open &ldquo;View details&rdquo; on any row to see the exact sample size and scale factor
-        used. Nomis business-count trends and the deprivation-based spending-power index aren&rsquo;t
-        wired in yet.
+        <strong>Coverage: all {rows.length} of 297 England local authorities.</strong> Every area’s food-business total is an exact figure from the FSA register’s own header count. Sector breakdowns (pubs, hotels, convenience, takeaways, restaurants) are exact for areas small enough to read in full (currently Babergh and the Hull &amp; Goole Port authority) and are otherwise estimated from a partial sample of that area’s FSA register, scaled to the area’s true total — open &ldquo;View details&rdquo; on any row to see the exact sample size and scale factor used. Nomis business-count trends and the deprivation-based spending-power index aren’t wired in yet.
       </p>
 
       <div className="mt-6">
