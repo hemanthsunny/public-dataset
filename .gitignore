@@ -38,3 +38,4 @@ next-env.d.ts
 # supabase local
 supabase/.branches
 supabase/.temp
+scripts/nomis-sectors.config.json

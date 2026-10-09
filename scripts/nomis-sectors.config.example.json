@@ -1,0 +1,33 @@
+{
+  "_comment": "Copy this file to nomis-sectors.config.json and replace each csvUrl with a real query URL generated from the Nomis Query Builder. See docs/nomis-sector-data.md for the exact click-by-click steps -- do not guess the URL by hand, the dataset/geography/industry codes are internal Nomis IDs, not the SIC letters shown here.",
+  "sectors": [
+    {
+      "key": "it_comms",
+      "label": "IT & communications",
+      "sicSection": "J",
+      "sicSectionName": "Information and communication",
+      "csvUrl": "REPLACE_WITH_NOMIS_QUERY_BUILDER_CSV_URL"
+    },
+    {
+      "key": "manufacturing",
+      "label": "Manufacturing",
+      "sicSection": "C",
+      "sicSectionName": "Manufacturing",
+      "csvUrl": "REPLACE_WITH_NOMIS_QUERY_BUILDER_CSV_URL"
+    },
+    {
+      "key": "prof_scientific",
+      "label": "Professional & scientific services",
+      "sicSection": "M",
+      "sicSectionName": "Professional, scientific and technical activities",
+      "csvUrl": "REPLACE_WITH_NOMIS_QUERY_BUILDER_CSV_URL"
+    },
+    {
+      "key": "construction",
+      "label": "Construction",
+      "sicSection": "F",
+      "sicSectionName": "Construction",
+      "csvUrl": "REPLACE_WITH_NOMIS_QUERY_BUILDER_CSV_URL"
+    }
+  ]
+}

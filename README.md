@@ -224,6 +224,24 @@ See `docs/architecture.md` for how the pieces fit together and how to add
 a new agent, and `docs/compliance.md` / `SECURITY.md` for the security
 practices baked into this codebase.
 
+## Acquisition Opportunity Finder: data sources
+
+`/dashboard/acquisition` ranks local authorities by market size vs.
+competition for a chosen sector. It currently draws on two open data
+sources, each with full per-row provenance shown in the UI:
+
+- **FSA food hygiene ratings register** ([ratings.food.gov.uk/open-data](https://ratings.food.gov.uk/open-data))
+  — population + food/hospitality sub-sectors (pubs, hotels, convenience
+  retail, takeaways, restaurants). Stored in `la_opportunity_metrics`
+  (`supabase/migrations/0007_acquisition_opportunity_metrics.sql`).
+- **ONS/Nomis UK Business Counts** ([nomisweb.co.uk](https://www.nomisweb.co.uk/))
+  — non-food sectors (IT & communications, manufacturing, professional &
+  scientific services, construction, and any other SIC 2007 section).
+  Stored in `la_sector_counts`
+  (`supabase/migrations/0008_la_sector_counts.sql`), populated by
+  `npm run nomis:fetch`. **See [`docs/nomis-sector-data.md`](docs/nomis-sector-data.md)
+  for the full setup walkthrough and how to add more sectors.**
+
 ## Adding the next agent
 
 The build order from the product doc: Agent 1 (New Incorporations, done)

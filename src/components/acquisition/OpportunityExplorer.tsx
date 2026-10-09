@@ -3,6 +3,21 @@
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { Card } from '@/components/ui/Card'
 
+/** A non-food sector metric for one local authority, sourced from la_sector_counts
+ * (e.g. ONS/Nomis UK Business Counts) rather than the FSA register. Unlike the
+ * food sub-sectors below, these are data-driven: add a new sector by inserting
+ * rows into la_sector_counts, no code change needed here. */
+export interface ExtraSectorMetric {
+  key: string
+  label: string
+  count: number
+  per10k: number | null
+  is_exact: boolean
+  source: string
+  source_url: string | null
+  fetch_date: string | null
+}
+
 export interface OpportunityRow {
   la_name: string
   region: string
@@ -26,18 +41,82 @@ export interface OpportunityRow {
   source_url: string | null
   fetch_date: string | null
   method_notes: string | null
+  /** Non-food sectors (IT, manufacturing, ...) merged in from la_sector_counts. */
+  extra_sectors?: ExtraSectorMetric[] | null
 }
 
-type SectorKey = 'food' | 'pubs' | 'hotels' | 'convenience' | 'takeaways' | 'restaurants'
+type FoodSectorKey =
+  'food' | 'pubs' | 'hotels' | 'convenience' | 'takeaways' | 'restaurants'
+type SectorKey = FoodSectorKey | string
 
-const SECTORS: { key: SectorKey; label: string; estField: keyof OpportunityRow; per10kField: keyof OpportunityRow }[] = [
-  { key: 'food', label: 'Overall food & hospitality density', estField: 'food_total', per10kField: 'food_per_10k' },
-  { key: 'pubs', label: 'Pubs & bars', estField: 'pubs_est', per10kField: 'pubs_per_10k' },
-  { key: 'hotels', label: 'Hotels & B&Bs', estField: 'hotels_est', per10kField: 'hotels_per_10k' },
-  { key: 'convenience', label: 'Convenience-type retail', estField: 'convenience_est', per10kField: 'convenience_per_10k' },
-  { key: 'takeaways', label: 'Takeaways', estField: 'takeaways_est', per10kField: 'takeaways_per_10k' },
-  { key: 'restaurants', label: 'Restaurants & cafés', estField: 'restaurants_est', per10kField: 'restaurants_per_10k' },
+const FOOD_SECTORS: {
+  key: FoodSectorKey
+  label: string
+  estField: keyof OpportunityRow
+  per10kField: keyof OpportunityRow
+}[] = [
+  {
+    key: 'food',
+    label: 'Overall food & hospitality density',
+    estField: 'food_total',
+    per10kField: 'food_per_10k',
+  },
+  {
+    key: 'pubs',
+    label: 'Pubs & bars',
+    estField: 'pubs_est',
+    per10kField: 'pubs_per_10k',
+  },
+  {
+    key: 'hotels',
+    label: 'Hotels & B&Bs',
+    estField: 'hotels_est',
+    per10kField: 'hotels_per_10k',
+  },
+  {
+    key: 'convenience',
+    label: 'Convenience-type retail',
+    estField: 'convenience_est',
+    per10kField: 'convenience_per_10k',
+  },
+  {
+    key: 'takeaways',
+    label: 'Takeaways',
+    estField: 'takeaways_est',
+    per10kField: 'takeaways_per_10k',
+  },
+  {
+    key: 'restaurants',
+    label: 'Restaurants & cafés',
+    estField: 'restaurants_est',
+    per10kField: 'restaurants_per_10k',
+  },
 ]
+
+/** Resolves a sector's {count, per10k, isExact} for one row, whichever source it comes from. */
+function sectorValue(
+  row: OpportunityRow,
+  key: SectorKey
+): { count: number; per10k: number; isExact: boolean; source: string | null } {
+  const food = FOOD_SECTORS.find((s) => s.key === key)
+  if (food) {
+    return {
+      count: Number(row[food.estField]),
+      per10k: Number(row[food.per10kField]),
+      isExact: row.is_exact,
+      source: null, // food sectors use the FSA EXACT_TOOLTIP/SAMPLE_TOOLTIP copy instead
+    }
+  }
+  const extra = row.extra_sectors?.find((s) => s.key === key)
+  return {
+    count: extra?.count ?? 0,
+    per10k: extra?.per10k ?? 0,
+    isExact: extra?.is_exact ?? true,
+    source: extra
+      ? `${extra.source}${extra.fetch_date ? ` · fetched ${extra.fetch_date}` : ''}`
+      : null,
+  }
+}
 
 function norm(values: number[], v: number) {
   const min = Math.min(...values)
@@ -56,7 +135,8 @@ const SAMPLE_TOOLTIP =
   'Estimated from a partial sample of this area’s FSA register, scaled to the area’s true total. ' +
   'A value of 0 means none of the sampled records fell in this category — it does not mean the true count is zero. ' +
   'Open "View details" for the exact sample size and scale factor.'
-const EXACT_TOOLTIP = 'Exact count — every record in this area’s FSA register was read, nothing scaled.'
+const EXACT_TOOLTIP =
+  'Exact count — every record in this area’s FSA register was read, nothing scaled.'
 
 type SortKey = 'name' | 'region' | 'population' | 'sectorPer10k' | 'foodPer10k' | 'score'
 
@@ -121,7 +201,29 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
     () => ['All regions', ...Array.from(new Set(rows.map((r) => r.region))).sort()],
     [rows]
   )
-  const sectorDef = SECTORS.find((s) => s.key === sector)!
+
+  // Non-food sectors are whatever keys are present in extra_sectors -- new
+  // ones (e.g. a new Nomis SIC section) show up automatically once their
+  // rows exist in la_sector_counts, no code change needed.
+  const dynamicSectors = useMemo(() => {
+    const byKey = new Map<string, string>()
+    for (const r of rows) {
+      for (const s of r.extra_sectors ?? []) {
+        if (!byKey.has(s.key)) byKey.set(s.key, s.label)
+      }
+    }
+    return Array.from(byKey, ([key, label]) => ({ key, label }))
+  }, [rows])
+
+  const SECTORS = useMemo(
+    () => [
+      ...FOOD_SECTORS.map((s) => ({ key: s.key as string, label: s.label })),
+      ...dynamicSectors,
+    ],
+    [dynamicSectors]
+  )
+
+  const sectorDef = SECTORS.find((s) => s.key === sector) ?? SECTORS[0]
 
   const overview = useMemo(() => {
     const regionCount = new Set(rows.map((r) => r.region)).size
@@ -136,18 +238,21 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
   const scored = useMemo(() => {
     const filtered = rows.filter((r) => region === 'All regions' || r.region === region)
     const pops = filtered.map((r) => r.population)
-    const dens = filtered.map((r) => Number(r[sectorDef.per10kField]))
+    const dens = filtered.map((r) => sectorValue(r, sector).per10k)
     const satWeight = weight / 100
     const sizeWeight = 1 - satWeight
 
     const withScore = filtered.map((r) => {
+      const sv = sectorValue(r, sector)
       const sizeScore = norm(pops, r.population) * 100
-      const satScore = (1 - norm(dens, Number(r[sectorDef.per10kField]))) * 100
+      const satScore = (1 - norm(dens, sv.per10k)) * 100
       const score = Math.round(sizeWeight * sizeScore + satWeight * satScore)
       return {
         ...r,
-        sectorEst: Number(r[sectorDef.estField]),
-        sectorPer10k: Number(r[sectorDef.per10kField]),
+        sectorEst: sv.count,
+        sectorPer10k: sv.per10k,
+        sectorIsExact: sv.isExact,
+        sectorSource: sv.source,
         score,
       }
     })
@@ -156,18 +261,31 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
       const key = sortKey
       let av: number | string
       let bv: number | string
-      if (key === 'name') { av = a.la_name; bv = b.la_name }
-      else if (key === 'region') { av = a.region; bv = b.region }
-      else if (key === 'population') { av = a.population; bv = b.population }
-      else if (key === 'sectorPer10k') { av = a.sectorPer10k; bv = b.sectorPer10k }
-      else if (key === 'foodPer10k') { av = a.food_per_10k; bv = b.food_per_10k }
-      else { av = a.score; bv = b.score }
+      if (key === 'name') {
+        av = a.la_name
+        bv = b.la_name
+      } else if (key === 'region') {
+        av = a.region
+        bv = b.region
+      } else if (key === 'population') {
+        av = a.population
+        bv = b.population
+      } else if (key === 'sectorPer10k') {
+        av = a.sectorPer10k
+        bv = b.sectorPer10k
+      } else if (key === 'foodPer10k') {
+        av = a.food_per_10k
+        bv = b.food_per_10k
+      } else {
+        av = a.score
+        bv = b.score
+      }
       if (typeof av === 'string') return sortDir * av.localeCompare(bv as string)
       return sortDir * ((av as number) - (bv as number))
     })
 
     return withScore
-  }, [rows, region, sectorDef, weight, sortKey, sortDir])
+  }, [rows, region, sector, weight, sortKey, sortDir])
 
   const topOpportunities = useMemo(
     () => [...scored].sort((a, b) => b.score - a.score).slice(0, 10),
@@ -226,8 +344,12 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Regions covered
           </div>
-          <div className="mt-1 text-2xl font-semibold text-slate-900">{overview.regionCount}</div>
-          <div className="mt-0.5 text-xs text-slate-500">{overview.exactCount} areas with exact sector counts</div>
+          <div className="mt-1 text-2xl font-semibold text-slate-900">
+            {overview.regionCount}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            {overview.exactCount} areas with exact sector counts
+          </div>
         </div>
       </div>
 
@@ -242,7 +364,9 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
             className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
           >
             {regions.map((r) => (
-              <option key={r} value={r}>{r}</option>
+              <option key={r} value={r}>
+                {r}
+              </option>
             ))}
           </select>
         </div>
@@ -256,7 +380,9 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
             className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
           >
             {SECTORS.map((s) => (
-              <option key={s.key} value={s.key}>{s.label}</option>
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
             ))}
           </select>
         </div>
@@ -282,12 +408,12 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
       <Card className="mt-6">
         <h2 className="text-sm font-semibold text-slate-900">
           {'Top 10 opportunities — '}
-          {sectorDef.label}
+          {sectorDef?.label ?? ''}
           {region !== 'All regions' ? ` · ${region}` : ''}
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">
-          Ranked by the opportunity score at the current weighting. Score blends market size
-          (population) against competition (sector density per 10k people).
+          Ranked by the opportunity score at the current weighting. Score blends market
+          size (population) against competition (sector density per 10k people).
         </p>
         <div className="mt-4 space-y-3">
           {topOpportunities.map((r, i) => (
@@ -296,7 +422,9 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                 <span className="truncate font-medium text-slate-900">
                   <span className="mr-2 text-xs text-slate-400">{i + 1}</span>
                   {r.la_name}
-                  <span className="ml-2 text-xs font-normal text-slate-500">{r.region}</span>
+                  <span className="ml-2 text-xs font-normal text-slate-500">
+                    {r.region}
+                  </span>
                 </span>
                 <span className="shrink-0 tabular-nums text-slate-600">{r.score}</span>
               </div>
@@ -330,20 +458,35 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
           <tbody>
             {scored.map((r, i) => (
               <Fragment key={r.la_name}>
-                <tr key={r.la_name} className="border-b border-slate-100 hover:bg-slate-50">
+                <tr
+                  key={r.la_name}
+                  className="border-b border-slate-100 hover:bg-slate-50"
+                >
                   <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-900">
                     <span className="mr-2 text-xs text-slate-400">{i + 1}</span>
                     {r.la_name}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-slate-500">{r.region}</td>
-                  <td className="whitespace-nowrap px-3 py-2 tabular-nums">{r.population.toLocaleString()}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-slate-500">
+                    {r.region}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 tabular-nums">
+                    {r.population.toLocaleString()}
+                  </td>
                   <td
                     className="whitespace-nowrap px-3 py-2 tabular-nums"
-                    title={r.is_exact ? EXACT_TOOLTIP : SAMPLE_TOOLTIP}
+                    title={
+                      r.sectorSource
+                        ? `${r.sectorSource}${r.sectorIsExact ? '' : ' · estimated'}`
+                        : r.sectorIsExact
+                          ? EXACT_TOOLTIP
+                          : SAMPLE_TOOLTIP
+                    }
                   >
                     {r.sectorEst.toLocaleString()} ({r.sectorPer10k.toFixed(2)}/10k)
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 tabular-nums">{r.food_per_10k.toFixed(1)}</td>
+                  <td className="whitespace-nowrap px-3 py-2 tabular-nums">
+                    {r.food_per_10k.toFixed(1)}
+                  </td>
                   <td className="whitespace-nowrap px-3 py-2">
                     <span className="inline-flex items-center gap-2 tabular-nums">
                       {r.score}
@@ -370,7 +513,10 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                   </td>
                 </tr>
                 {openDetails === r.la_name && (
-                  <tr key={`${r.la_name}-details`} className="border-b border-slate-100 bg-slate-50">
+                  <tr
+                    key={`${r.la_name}-details`}
+                    className="border-b border-slate-100 bg-slate-50"
+                  >
                     <td colSpan={7} className="px-4 py-4 text-sm text-slate-700">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
@@ -380,20 +526,28 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                           <p className="mt-1">{r.method_notes}</p>
                           <p className="mt-2 text-xs text-slate-500">
                             Fetched {r.fetch_date ?? 'unknown date'}
-                            {!r.is_exact && r.sample_size != null && r.scale_factor != null && (
-                              <>
-                                {' '}· read {r.sample_size.toLocaleString()} records, scaled ×
-                                {Number(r.scale_factor).toFixed(2)} to estimate the area total
-                              </>
-                            )}
+                            {!r.is_exact &&
+                              r.sample_size != null &&
+                              r.scale_factor != null && (
+                                <>
+                                  {' '}
+                                  · read {r.sample_size.toLocaleString()} records, scaled
+                                  ×{Number(r.scale_factor).toFixed(2)} to estimate the
+                                  area total
+                                </>
+                              )}
                           </p>
                         </div>
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Population
                           </div>
-                          <p className="mt-1 tabular-nums">{r.population.toLocaleString()}</p>
-                          <p className="mt-1 text-xs text-slate-500">{r.population_source}</p>
+                          <p className="mt-1 tabular-nums">
+                            {r.population.toLocaleString()}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {r.population_source}
+                          </p>
                         </div>
                       </div>
 
@@ -416,14 +570,20 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
 
                         <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
                           {!r.source_url && (
-                            <p className="p-3 text-sm text-slate-500">No source file recorded for this area.</p>
+                            <p className="p-3 text-sm text-slate-500">
+                              No source file recorded for this area.
+                            </p>
                           )}
-                          {r.source_url && fsaDetails[r.la_name]?.status === 'loading' && (
-                            <p className="p-3 text-sm text-slate-500">{'Loading live register data…'}</p>
-                          )}
+                          {r.source_url &&
+                            fsaDetails[r.la_name]?.status === 'loading' && (
+                              <p className="p-3 text-sm text-slate-500">
+                                {'Loading live register data…'}
+                              </p>
+                            )}
                           {r.source_url && fsaDetails[r.la_name]?.status === 'error' && (
                             <p className="p-3 text-sm text-rose-600">
-                              {fsaDetails[r.la_name]?.error ?? 'Could not load the register.'}
+                              {fsaDetails[r.la_name]?.error ??
+                                'Could not load the register.'}
                             </p>
                           )}
                           {r.source_url && fsaDetails[r.la_name]?.status === 'ready' && (
@@ -440,15 +600,28 @@ export function OpportunityExplorer({ rows }: { rows: OpportunityRow[] }) {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {(fsaDetails[r.la_name]?.records ?? []).map((rec, idx) => (
-                                      <tr key={idx} className="border-t border-slate-100">
-                                        <td className="px-2 py-1.5">{rec.name}</td>
-                                        <td className="px-2 py-1.5 text-slate-500">{rec.type}</td>
-                                        <td className="px-2 py-1.5 tabular-nums">{rec.rating ?? '—'}</td>
-                                        <td className="px-2 py-1.5 text-slate-500">{rec.ratingDate ?? '—'}</td>
-                                        <td className="px-2 py-1.5 tabular-nums">{rec.postcode ?? '—'}</td>
-                                      </tr>
-                                    ))}
+                                    {(fsaDetails[r.la_name]?.records ?? []).map(
+                                      (rec, idx) => (
+                                        <tr
+                                          key={idx}
+                                          className="border-t border-slate-100"
+                                        >
+                                          <td className="px-2 py-1.5">{rec.name}</td>
+                                          <td className="px-2 py-1.5 text-slate-500">
+                                            {rec.type}
+                                          </td>
+                                          <td className="px-2 py-1.5 tabular-nums">
+                                            {rec.rating ?? '—'}
+                                          </td>
+                                          <td className="px-2 py-1.5 text-slate-500">
+                                            {rec.ratingDate ?? '—'}
+                                          </td>
+                                          <td className="px-2 py-1.5 tabular-nums">
+                                            {rec.postcode ?? '—'}
+                                          </td>
+                                        </tr>
+                                      )
+                                    )}
                                   </tbody>
                                 </table>
                               </div>

@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "agent1:run": "tsx scripts/run-agent1.ts",
-    "companies-house:test": "tsx scripts/test-companies-house.ts"
+    "companies-house:test": "tsx scripts/test-companies-house.ts",
+    "nomis:fetch": "tsx scripts/fetch-nomis-sectors.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

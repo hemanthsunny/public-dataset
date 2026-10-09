@@ -205,6 +205,31 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['la_opportunity_metrics']['Row']>
         Relationships: Relationships
       }
+      la_sector_counts: {
+        Row: {
+          id: string
+          la_name: string
+          sector_key: string
+          sector_label: string
+          count: number
+          per_10k: number | null
+          is_exact: boolean
+          source: string
+          source_url: string | null
+          fetch_date: string | null
+          method_notes: string | null
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['la_sector_counts']['Row']> & {
+          la_name: string
+          sector_key: string
+          sector_label: string
+          count: number
+          source: string
+        }
+        Update: Partial<Database['public']['Tables']['la_sector_counts']['Row']>
+        Relationships: Relationships
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
