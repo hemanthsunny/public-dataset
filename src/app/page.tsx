@@ -23,6 +23,39 @@ export const metadata: Metadata = {
   },
 }
 
+interface DataSource {
+  name: string
+  description: string
+  licence: string
+}
+
+const DATA_SOURCES: DataSource[] = [
+  {
+    name: 'Companies House',
+    description:
+      'New incorporations, dissolutions and strike-offs — the daily company register feed.',
+    licence: 'Free API',
+  },
+  {
+    name: 'FSA food hygiene ratings',
+    description:
+      'Every food business\u2019s hygiene rating and register entry, including pub, hotel, convenience, takeaway and restaurant sub-sectors.',
+    licence: 'Open Government Licence',
+  },
+  {
+    name: 'ONS population estimates',
+    description:
+      'Mid-year population by local authority, used to turn raw counts into like-for-like density.',
+    licence: 'Open Government Licence',
+  },
+  {
+    name: 'ONS / Nomis business counts',
+    description:
+      'Enterprise counts by industry \u2014 IT & communications, manufacturing, professional & scientific services, construction and more.',
+    licence: 'Open Government Licence',
+  },
+]
+
 export default function HomePage() {
   const liveAgents = AGENTS.filter((a) => a.isAvailable)
 
@@ -37,9 +70,9 @@ export default function HomePage() {
             Public register alerts, delivered where you already work.
           </h1>
           <p className="mt-6 text-lg text-slate-600">
-            UK public registers — Companies House, FSA, planning portals, court judgments —
-            packaged as targeted, subscribable agents that post straight into Slack, Teams,
-            or WhatsApp. No dashboard to remember to check.
+            UK public registers — Companies House, FSA, planning portals, court judgments
+            — packaged as targeted, subscribable agents that post straight into Slack,
+            Teams, or WhatsApp. No dashboard to remember to check.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
@@ -58,12 +91,39 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-t border-slate-200 bg-slate-50">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Built on public data
+          </h2>
+          <p className="mt-2 max-w-2xl text-slate-600">
+            {
+              'Every number anywhere on this site traces back to one of these open, free sources \u2014 nothing scraped, nothing paywalled.'
+            }
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {DATA_SOURCES.map((source) => (
+              <div
+                key={source.name}
+                className="rounded-xl border border-slate-200 bg-white p-4"
+              >
+                <div className="text-sm font-semibold text-slate-900">{source.name}</div>
+                <p className="mt-1.5 text-xs text-slate-600">{source.description}</p>
+                <span className="mt-3 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                  {source.licence}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <h2 className="text-2xl font-bold text-slate-900">Available now</h2>
           <p className="mt-2 text-slate-600">
-            Every data source below is free, public, and already has an API — we just deliver
-            it to the right person, filtered, in the place they already look.
+            Every data source below is free, public, and already has an API — we just
+            deliver it to the right person, filtered, in the place they already look.
           </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-2">
             {liveAgents.map((agent) => (
@@ -73,7 +133,9 @@ export default function HomePage() {
                 <p className="mt-4 text-sm text-slate-500">{agent.description}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-900">
-                    {agent.monthlyPriceGbp ? `£${agent.monthlyPriceGbp}/month` : 'Pay per lookup'}
+                    {agent.monthlyPriceGbp
+                      ? `£${agent.monthlyPriceGbp}/month`
+                      : 'Pay per lookup'}
                   </span>
                   <Link
                     href={`/agents/${agent.id}`}
@@ -88,6 +150,54 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <h2 className="text-2xl font-bold text-slate-900">Tools, not just alerts</h2>
+          <p className="mt-2 max-w-2xl text-slate-600">
+            Some data is more useful explored than alerted on. The Acquisition Opportunity
+            Finder ranks every local authority in England by market size against existing
+            competition, for anyone looking to buy a pub, hotel, shop or similar small
+            business.
+          </p>
+
+          <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
+              <div className="bg-slate-50 p-5">
+                <div className="text-2xl font-semibold text-slate-900">297/297</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  England local authorities covered
+                </div>
+              </div>
+              <div className="bg-slate-50 p-5">
+                <div className="text-2xl font-semibold text-slate-900">100%</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {'of rows traceable to source \u2014 no black-box numbers'}
+                </div>
+              </div>
+              <div className="bg-slate-50 p-5">
+                <div className="text-2xl font-semibold text-slate-900">4+</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  open data sources, from food & hospitality to IT, manufacturing and more
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600">
+                {
+                  'Filter by region and sector, weight the ranking toward bigger population or lighter competition, then drill into any local authority to see the exact register entries behind its numbers \u2014 live, not a cached snapshot.'
+                }
+              </p>
+              <Link
+                href="/signup"
+                className="mt-4 inline-block text-sm font-semibold text-brand-600 hover:text-brand-700"
+              >
+                {'Sign up to try it \u2192'}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-2xl font-bold text-slate-900">Coming next</h2>
         <ul className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -98,7 +208,9 @@ export default function HomePage() {
                 className="flex items-center justify-between rounded-lg border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600 hover:border-brand-400 hover:text-slate-900"
               >
                 <span>{agent.name}</span>
-                <span className="text-xs uppercase tracking-wide text-slate-400">Planned</span>
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Planned
+                </span>
               </Link>
             </li>
           ))}
