@@ -87,9 +87,14 @@ export default async function AcquisitionPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900">
-        Acquisition opportunity finder
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Acquisition opportunity finder
+        </h1>
+        <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-700">
+          {'\u00a399/month'}
+        </span>
+      </div>
       <p className="mt-2 max-w-2xl text-sm text-slate-600">
         Where to look for a pub, hotel, convenience store or similar small business to buy
         — ranked by local market size against how much existing competition is already

@@ -152,7 +152,12 @@ export default function HomePage() {
 
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <h2 className="text-2xl font-bold text-slate-900">Tools, not just alerts</h2>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">Tools, not just alerts</h2>
+            <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-700">
+              {'\u00a399/month'}
+            </span>
+          </div>
           <p className="mt-2 max-w-2xl text-slate-600">
             Some data is more useful explored than alerted on. The Acquisition Opportunity
             Finder ranks every local authority in England by market size against existing
@@ -187,12 +192,17 @@ export default function HomePage() {
                   'Filter by region and sector, weight the ranking toward bigger population or lighter competition, then drill into any local authority to see the exact register entries behind its numbers \u2014 live, not a cached snapshot.'
                 }
               </p>
-              <Link
-                href="/signup"
-                className="mt-4 inline-block text-sm font-semibold text-brand-600 hover:text-brand-700"
-              >
-                {'Sign up to try it \u2192'}
-              </Link>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-900">
+                  {'\u00a399/month'}
+                </span>
+                <Link
+                  href="/signup"
+                  className="text-sm font-semibold text-brand-600 hover:text-brand-700"
+                >
+                  {'Sign up to try it \u2192'}
+                </Link>
+              </div>
             </div>
           </div>
         </div>
